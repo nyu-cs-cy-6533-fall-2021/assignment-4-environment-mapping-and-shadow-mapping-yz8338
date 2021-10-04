@@ -1,0 +1,10 @@
+^C:\USERS\HZ36A\ONEDRIVE\桌面\CG_ASSIGNMENT2\EXT\GLEW\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/hz36a/OneDrive/桌面/CG_Assignment2/Assignment_2 -BC:/Users/hz36a/OneDrive/桌面/CG_Assignment2/Assignment_2/build --check-stamp-file C:/Users/hz36a/OneDrive/桌面/CG_Assignment2/Assignment_2/build/glew/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

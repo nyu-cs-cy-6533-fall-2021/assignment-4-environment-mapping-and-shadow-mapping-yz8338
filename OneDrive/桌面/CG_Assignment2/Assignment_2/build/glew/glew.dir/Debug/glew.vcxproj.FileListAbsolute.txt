@@ -1,0 +1,2 @@
+C:\Users\hz36a\OneDrive\桌面\CG_Assignment2\Assignment_2\build\Debug\glew.pdb
+C:\Users\hz36a\OneDrive\桌面\CG_Assignment2\Assignment_2\build\glew\glew.dir\Debug\glew.pdb
