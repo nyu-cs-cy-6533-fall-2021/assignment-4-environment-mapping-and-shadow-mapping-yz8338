@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\hz36a\OneDrive\桌面\CG_Assignment2\Assignment_2\extra\main_border.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\hz36a\OneDrive\桌面\CG_Assignment2\Assignment_2\src\Helpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\hz36a\OneDrive\桌面\CG_Assignment2\Assignment_2\src\Helpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\hz36a\OneDrive\桌面\CG_Assignment2\Assignment_2\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{EEE0D838-5BD2-3C96-B48E-9DF87C2FD45C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{B9955317-857D-31A0-906E-64269516FCB6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
