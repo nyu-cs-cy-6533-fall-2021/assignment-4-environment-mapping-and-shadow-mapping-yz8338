@@ -22,6 +22,14 @@
 // Timer
 #include <chrono>
 
+#include <iostream>
+using namespace std;
+
+// Key control boolean
+bool iKey, oKey, pKey, cKey;
+
+int insertIndex = 0;
+
 // VertexBufferObject wrapper
 VertexBufferObject VBO;
 
@@ -48,9 +56,19 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     double xworld = ((xpos/double(width))*2)-1;
     double yworld = (((height-1-ypos)/double(height))*2)-1; // NOTE: y axis is flipped in glfw
 
-    // Update the position of the first vertex if the left button is pressed
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-        V[0] = glm::vec2(xworld, yworld);
+    // // Update the position of the first vertex if the left button is pressed
+    // if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    //     V[0] = glm::vec2(xworld, yworld);
+
+    // Triangle insertion mode on
+    if (iKey && action == GLFW_PRESS) {
+        V[insertIndex] = glm::vec2(xworld, yworld);
+        VBO.update(V);
+
+        insertIndex += 1;
+        if (insertIndex >= V.size())
+            iKey = false;
+    }
 
     // Upload the change to the GPU
     VBO.update(V);
@@ -61,15 +79,31 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     // Update the position of the first vertex if the keys 1,2, or 3 are pressed
     switch (key)
     {
-        case  GLFW_KEY_1:
-            V[0] = glm::vec2(-0.5,  0.5);
+        // 'i': triangle insertion mode
+        case GLFW_KEY_I:
+            if (action == GLFW_PRESS) {
+                iKey = true;
+                insertIndex = 0;
+                cout << "triangle insertion mode start";
+            }
             break;
-        case GLFW_KEY_2:
-            V[0] = glm::vec2(0,  0.5);
+
+        // 'o': triangle translation mode
+        case GLFW_KEY_O:
+            if (action == GLFW_PRESS) {
+                oKey = true;
+                cout << "triangle translation mode start";
+            }
             break;
-        case  GLFW_KEY_3:
-            V[0] = glm::vec2(0.5,  0.5);
+
+        // 'p': triangle delete mode
+        case GLFW_KEY_P:
+            if (action == GLFW_PRESS) {
+                pKey = true;
+                cout << "triangle delete mode start";
+            }
             break;
+
         default:
             break;
     }
@@ -100,7 +134,7 @@ int main(void)
 #endif
 
     // Create a windowed mode window and its OpenGL context
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(640, 480, "Assignment2", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -210,7 +244,33 @@ int main(void)
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Draw a triangle
+        // Insertion Mode
+        if (iKey) {
+
+            if (insertIndex == 0) {
+                glPointSize(3.f);
+                glDrawArrays(GL_POINTS, 0, 1);
+            } else if (insertIndex == 1) {
+                glLineWidth(3.f);
+                glDrawArrays(GL_LINES, 0, 2);
+            } else if (insertIndex == 2) {
+                glDrawArrays(GL_LINES, 0, 2);
+                glDrawArrays(GL_TRIANGLES, 0, 3);
+            }
+
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+
+            int width, height;
+            glfwGetWindowSize(window, &width, &height);
+
+            double xworld = ((xpos/double(width))*2)-1;
+            double yworld = (((height-1-ypos)/double(height))*2)-1;
+
+            V[insertIndex] = glm::vec2(xworld, yworld);
+            VBO.update(V); 
+        }
+
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
         // Swap front and back buffers
