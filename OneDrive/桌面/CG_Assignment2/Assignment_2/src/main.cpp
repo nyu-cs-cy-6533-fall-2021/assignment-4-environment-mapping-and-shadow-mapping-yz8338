@@ -37,13 +37,14 @@ VertexBufferObject VBO;
 //Eigen::MatrixXf V(2,3);
 std::vector<glm::vec2> V(3);
 
+glm::vec2 current;
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
+glm::vec2 getCurrentWorldPos(GLFWwindow* window) {
     // Get the position of the mouse in the window
     double xpos, ypos;
     glfwGetCursorPos(window, &xpos, &ypos);
@@ -56,18 +57,35 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     double xworld = ((xpos/double(width))*2)-1;
     double yworld = (((height-1-ypos)/double(height))*2)-1; // NOTE: y axis is flipped in glfw
 
-    // // Update the position of the first vertex if the left button is pressed
-    // if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    //     V[0] = glm::vec2(xworld, yworld);
+    return glm::vec2(xworld, yworld);
+}
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
     // Triangle insertion mode on
     if (iKey && action == GLFW_PRESS) {
-        V[insertIndex] = glm::vec2(xworld, yworld);
-        VBO.update(V);
-
+        V[insertIndex] = getCurrentWorldPos(window);
         insertIndex += 1;
-        if (insertIndex >= V.size())
+        if (insertIndex >= V.size() - 3)
             iKey = false;
+    }
+
+    // Triangle translation mode on
+    if (oKey && action == GLFW_PRESS) {
+        // translation
+
+        oKey = false;
+    } else if (oKey && action == GLFW_RELEASE) {
+        // stop translation
+
+        oKey = false;
+    }
+
+    // Triangle deletion mode on
+    if (pKey && action == GLFW_PRESS) {
+        // delete triangle under the cursor
+
+        pKey = false;
     }
 
     // Upload the change to the GPU
@@ -83,7 +101,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         case GLFW_KEY_I:
             if (action == GLFW_PRESS) {
                 iKey = true;
-                insertIndex = 0;
+                V.resize(V.size() + 3);
                 cout << "triangle insertion mode start";
             }
             break;
@@ -178,9 +196,6 @@ int main(void)
     VBO.init();
 
     V.resize(3);
-    V[0] = glm::vec2(0,  0.5);
-    V[1] = glm::vec2(-0.5, -0.5);
-    V[2] = glm::vec2(0.5, -0.5);
     VBO.update(V);
 
     // Initialize the OpenGL Program
@@ -238,7 +253,7 @@ int main(void)
         // Set the uniform value depending on the time difference
         auto t_now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
-        glUniform3f(program.uniform("triangleColor"), (float)(sin(time * 4.0f) + 1.0f) / 2.0f, 0.0f, 0.0f);
+        glUniform3f(program.uniform("triangleColor"), 0.0f, 0.0f, 0.0f);
 
         // Clear the framebuffer
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -246,32 +261,44 @@ int main(void)
 
         // Insertion Mode
         if (iKey) {
-
-            if (insertIndex == 0) {
-                glPointSize(3.f);
-                glDrawArrays(GL_POINTS, 0, 1);
-            } else if (insertIndex == 1) {
-                glLineWidth(3.f);
-                glDrawArrays(GL_LINES, 0, 2);
-            } else if (insertIndex == 2) {
-                glDrawArrays(GL_LINES, 0, 2);
-                glDrawArrays(GL_TRIANGLES, 0, 3);
-            }
-
-            double xpos, ypos;
-            glfwGetCursorPos(window, &xpos, &ypos);
-
-            int width, height;
-            glfwGetWindowSize(window, &width, &height);
-
-            double xworld = ((xpos/double(width))*2)-1;
-            double yworld = (((height-1-ypos)/double(height))*2)-1;
-
-            V[insertIndex] = glm::vec2(xworld, yworld);
+            V[insertIndex] = getCurrentWorldPos(window);
             VBO.update(V); 
+
+            if (insertIndex % 3 == 0) {
+                glPointSize(3.f);
+                glDrawArrays(GL_POINTS, insertIndex, 1);
+            } else if (insertIndex % 3 == 1) {
+                glLineWidth(3.f);
+                glDrawArrays(GL_LINES, insertIndex - 1, 2);
+            } else if (insertIndex % 3 == 2) {
+                glDrawArrays(GL_LINE_LOOP, insertIndex - 2, 3);
+            }
         }
 
-        //glDrawArrays(GL_TRIANGLES, 0, 3);
+        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.0f, 0.0f);
+        glDrawArrays(GL_TRIANGLES, 0, insertIndex);
+
+ 
+        glUniform3f(program.uniform("triangleColor"), 0.0f, 0.0f, 0.0f);
+        for (int i = 0; i < insertIndex / 3; i ++) {
+            glDrawArrays(GL_LINE_LOOP, i * 3, 3);
+        }
+        
+
+        // Translation Mode
+        if (oKey) {
+
+        }
+
+
+        // Delete Mode
+        if (pKey) {
+            current = getCurrentWorldPos(window);
+            
+
+        }
+
+
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
