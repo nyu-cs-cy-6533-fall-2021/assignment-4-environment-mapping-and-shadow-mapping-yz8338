@@ -85,15 +85,9 @@ void deleteTriangle(int index) {
     for (int i = 0; i < 3; i ++) {
         V.pop_back();
     }
-
-    int temp = index * 3 + 3;
-    for (temp; temp < V.size(); temp ++) {
-        std::swap(std::begin(V) + temp, std::begin(V) + temp - 3);
-    }
-
-    for (int i = 0; i < 3; i ++) {
-        V.pop_back();
-    }
+    
+    int temp = index * 3;
+    V.erase(V.begin() + temp, V.begin() + temp + 3);
 
     insertIndex = (int)V.size();
     V.resize(V.size() + 3);
@@ -111,7 +105,9 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
     // Triangle translation mode on
     if (oKey && action == GLFW_PRESS) {
-        // select triangle
+        cursor = getCurrentWorldPos(window);
+        triangle = getCurrentTriangle(cursor); // select triangle
+        cout << triangle;
         // highlight
         // translation
 
