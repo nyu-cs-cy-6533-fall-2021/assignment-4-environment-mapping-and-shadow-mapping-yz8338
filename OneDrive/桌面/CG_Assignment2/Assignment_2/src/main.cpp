@@ -39,6 +39,7 @@ std::vector<glm::vec2> V(3);
 
 glm::vec2 cursor;
 int triangle;
+bool drag = false;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -85,12 +86,15 @@ void deleteTriangle(int index) {
     for (int i = 0; i < 3; i ++) {
         V.pop_back();
     }
-    
     int temp = index * 3;
     V.erase(V.begin() + temp, V.begin() + temp + 3);
 
     insertIndex = (int)V.size();
     V.resize(V.size() + 3);
+}
+
+void translateTriangle(int index) {
+    cout << "1";
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -107,14 +111,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     if (oKey && action == GLFW_PRESS) {
         cursor = getCurrentWorldPos(window);
         triangle = getCurrentTriangle(cursor); // select triangle
-        cout << triangle;
-        // highlight
-        // translation
-
-        oKey = false;
+        if (triangle != -1) {
+            drag = true;
+        }
     } else if (oKey && action == GLFW_RELEASE) {
-        // de-select
-
+        drag = false;
         oKey = false;
     }
 
@@ -124,7 +125,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         triangle = getCurrentTriangle(cursor); // select triangle
         deleteTriangle(triangle); // delete triangle
         pKey = false;
-        triangle = -1;
     }
 
     // Upload the change to the GPU
@@ -326,16 +326,11 @@ int main(void)
 
         // Translation Mode
         if (oKey) {
-
+            if (drag) {
+                // highlight
+                translateTriangle(triangle); // translation
+            }
         }
-
-
-        // Delete Mode
-        if (pKey) {
-            
-
-        }
-
 
 
         // Swap front and back buffers
