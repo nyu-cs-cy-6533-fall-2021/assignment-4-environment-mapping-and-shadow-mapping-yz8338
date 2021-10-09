@@ -37,7 +37,8 @@ VertexBufferObject VBO;
 //Eigen::MatrixXf V(2,3);
 std::vector<glm::vec2> V(3);
 
-glm::vec2 current;
+glm::vec2 cursor;
+int triangle;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -60,6 +61,44 @@ glm::vec2 getCurrentWorldPos(GLFWwindow* window) {
     return glm::vec2(xworld, yworld);
 }
 
+bool pointInTriangle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y) {
+    float denominator = ((y2 - y3)*(x1 - x3) + (x3 - x2)*(y1 - y3));
+    float a = ((y2 - y3)*(x - x3) + (x3 - x2)*(y - y3)) / denominator;
+    float b = ((y3 - y1)*(x - x3) + (x1 - x3)*(y - y3)) / denominator;
+    float c = 1 - a - b;
+
+    return 0 <= a && a <= 1 && 0 <= b && b <= 1 && 0 <= c && c <= 1;
+}
+
+int getCurrentTriangle(glm::vec2 cursor) {
+    for (int i = 0; i < insertIndex / 3; i ++) {
+        //glDrawArrays(GL_LINE_LOOP, i * 3, 3);
+        int index = i * 3;
+        bool temp = pointInTriangle(V[index][0], V[index][1], V[index+1][0], V[index+1][1], V[index+2][0], V[index+2][1], cursor[0], cursor[1]);
+        if (temp) 
+            return i;
+    }
+    return -1;
+}
+
+void deleteTriangle(int index) {
+    for (int i = 0; i < 3; i ++) {
+        V.pop_back();
+    }
+
+    int temp = index * 3 + 3;
+    for (temp; temp < V.size(); temp ++) {
+        std::swap(std::begin(V) + temp, std::begin(V) + temp - 3);
+    }
+
+    for (int i = 0; i < 3; i ++) {
+        V.pop_back();
+    }
+
+    insertIndex = (int)V.size();
+    V.resize(V.size() + 3);
+}
+
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     // Triangle insertion mode on
@@ -72,20 +111,24 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
     // Triangle translation mode on
     if (oKey && action == GLFW_PRESS) {
+        // select triangle
+        // highlight
         // translation
 
         oKey = false;
     } else if (oKey && action == GLFW_RELEASE) {
-        // stop translation
+        // de-select
 
         oKey = false;
     }
 
     // Triangle deletion mode on
     if (pKey && action == GLFW_PRESS) {
-        // delete triangle under the cursor
-
+        cursor = getCurrentWorldPos(window);
+        triangle = getCurrentTriangle(cursor); // select triangle
+        deleteTriangle(triangle); // delete triangle
         pKey = false;
+        triangle = -1;
     }
 
     // Upload the change to the GPU
@@ -102,7 +145,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             if (action == GLFW_PRESS) {
                 iKey = true;
                 V.resize(V.size() + 3);
-                cout << "triangle insertion mode start";
+                cout << "triangle insertion mode start \n";
             }
             break;
 
@@ -110,7 +153,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         case GLFW_KEY_O:
             if (action == GLFW_PRESS) {
                 oKey = true;
-                cout << "triangle translation mode start";
+                cout << "triangle translation mode start \n";
             }
             break;
 
@@ -118,7 +161,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         case GLFW_KEY_P:
             if (action == GLFW_PRESS) {
                 pKey = true;
-                cout << "triangle delete mode start";
+                cout << "triangle delete mode start \n";
             }
             break;
 
@@ -293,7 +336,6 @@ int main(void)
 
         // Delete Mode
         if (pKey) {
-            current = getCurrentWorldPos(window);
             
 
         }
