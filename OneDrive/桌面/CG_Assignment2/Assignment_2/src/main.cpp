@@ -93,8 +93,24 @@ void deleteTriangle(int index) {
     V.resize(V.size() + 3);
 }
 
-void translateTriangle(int index) {
-    cout << "1";
+void translateTriangle(int index, GLFWwindow* window) {
+    // highlight selected triangle
+    
+
+    glm::vec2 temp = getCurrentWorldPos(window);
+    float trans_x = temp[0] - cursor[0];
+    float trans_y = temp[1] - cursor[1];
+
+    int t = triangle * 3;
+
+    for (int i = 0; i < 3; i ++) {
+        V[t + i][0] = V[t + i][0] + trans_x;
+        V[t + i][1] = V[t + i][1] + trans_y;
+    }
+
+    cursor = getCurrentWorldPos(window);
+
+    VBO.update(V);
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -326,10 +342,8 @@ int main(void)
 
         // Translation Mode
         if (oKey) {
-            if (drag) {
-                // highlight
-                translateTriangle(triangle); // translation
-            }
+            if (drag)
+                translateTriangle(triangle, window); // translation
         }
 
 
