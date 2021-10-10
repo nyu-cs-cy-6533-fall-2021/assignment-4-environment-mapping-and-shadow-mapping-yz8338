@@ -28,16 +28,20 @@ using namespace std;
 // Key control boolean
 bool iKey, oKey, pKey, cKey;
 
-int insertIndex = 0;
-
 // VertexBufferObject wrapper
 VertexBufferObject VBO;
+VertexBufferObject VBO_C;
 
 // Contains the vertex positions
 //Eigen::MatrixXf V(2,3);
 std::vector<glm::vec2> V(3);
 
+// Contains the per-vertex color
+std::vector<glm::vec3> C(3);
+std::vector<glm::vec3> temp_C(3);
+
 glm::vec2 cursor;
+int insertIndex = 0;
 int triangle;
 bool drag = false;
 
@@ -94,9 +98,7 @@ void deleteTriangle(int index) {
 }
 
 void translateTriangle(int index, GLFWwindow* window) {
-    // highlight selected triangle
     
-
     glm::vec2 temp = getCurrentWorldPos(window);
     float trans_x = temp[0] - cursor[0];
     float trans_y = temp[1] - cursor[1];
@@ -106,11 +108,23 @@ void translateTriangle(int index, GLFWwindow* window) {
     for (int i = 0; i < 3; i ++) {
         V[t + i][0] = V[t + i][0] + trans_x;
         V[t + i][1] = V[t + i][1] + trans_y;
+        C[t + i] = glm::vec3(0, 0, 1);       
     }
 
     cursor = getCurrentWorldPos(window);
 
     VBO.update(V);
+    VBO_C.update(C);
+}
+
+void resetColor(int i_triangle, float r, float g, float b) {
+    int t = i_triangle * 3;
+
+    for (int i = 0; i < 3; i ++) {
+        C[t + i] = glm::vec3(r, g, b);       
+    }
+
+    VBO_C.update(C);
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -119,8 +133,10 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     if (iKey && action == GLFW_PRESS) {
         V[insertIndex] = getCurrentWorldPos(window);
         insertIndex += 1;
-        if (insertIndex >= V.size() - 3)
+        if (insertIndex >= V.size() - 3) {
             iKey = false;
+            resetColor(insertIndex/3 - 1, 1.0, 0.0, 0.0);
+        }
     }
 
     // Triangle translation mode on
@@ -133,6 +149,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     } else if (oKey && action == GLFW_RELEASE) {
         drag = false;
         oKey = false;
+        resetColor(triangle, 1.0, 0.0, 0.0);
     }
 
     // Triangle deletion mode on
@@ -157,6 +174,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             if (action == GLFW_PRESS) {
                 iKey = true;
                 V.resize(V.size() + 3);
+                C.resize(C.size() + 3);
                 cout << "triangle insertion mode start \n";
             }
             break;
@@ -253,6 +271,12 @@ int main(void)
     V.resize(3);
     VBO.update(V);
 
+    // Second VBO for colors
+    VBO_C.init();
+
+    C.resize(3);
+    VBO_C.update(C);
+
     // Initialize the OpenGL Program
     // A program controls the OpenGL pipeline and it must contains
     // at least a vertex shader and a fragment shader to be valid
@@ -260,17 +284,21 @@ int main(void)
     const GLchar* vertex_shader =
             "#version 150 core\n"
                     "in vec2 position;"
+                    "in vec3 color;"
+                    "out vec3 f_color;"
                     "void main()"
                     "{"
                     "    gl_Position = vec4(position, 0.0, 1.0);"
+                    "    f_color = color;"
                     "}";
     const GLchar* fragment_shader =
             "#version 150 core\n"
+                    "in vec3 f_color;"
                     "out vec4 outColor;"
                     "uniform vec3 triangleColor;"
                     "void main()"
                     "{"
-                    "    outColor = vec4(triangleColor, 1.0);"
+                    "    outColor = vec4(f_color, 1.0);"
                     "}";
 
     // Compile the two shaders and upload the binary to the GPU
@@ -283,6 +311,7 @@ int main(void)
     // The following line connects the VBO we defined above with the position "slot"
     // in the vertex shader
     program.bindVertexAttribArray("position",VBO);
+    program.bindVertexAttribArray("color",VBO_C);
 
     // Save the current time --- it will be used to dynamically change the triangle color
     auto t_start = std::chrono::high_resolution_clock::now();
@@ -319,6 +348,9 @@ int main(void)
             V[insertIndex] = getCurrentWorldPos(window);
             VBO.update(V); 
 
+            C[insertIndex] = glm::vec3(0, 0, 0);
+            VBO_C.update(C);
+
             if (insertIndex % 3 == 0) {
                 glPointSize(3.f);
                 glDrawArrays(GL_POINTS, insertIndex, 1);
@@ -330,22 +362,22 @@ int main(void)
             }
         }
 
-        glUniform3f(program.uniform("triangleColor"), 1.0f, 0.0f, 0.0f);
         glDrawArrays(GL_TRIANGLES, 0, insertIndex);
-
- 
-        glUniform3f(program.uniform("triangleColor"), 0.0f, 0.0f, 0.0f);
+     
         for (int i = 0; i < insertIndex / 3; i ++) {
+            temp_C = C;
+            resetColor(i, 0.0, 0.0, 0.0);
             glDrawArrays(GL_LINE_LOOP, i * 3, 3);
+            C = temp_C;
+            VBO_C.update(C);
         }
         
-
         // Translation Mode
         if (oKey) {
-            if (drag)
-                translateTriangle(triangle, window); // translation
+            if (drag) {
+                translateTriangle(triangle, window); // highlight & translation
+            }
         }
-
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
