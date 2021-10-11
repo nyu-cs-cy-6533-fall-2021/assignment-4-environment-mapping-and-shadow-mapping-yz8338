@@ -23,6 +23,7 @@
 #include <chrono>
 
 #include <iostream>
+#include <math.h>
 using namespace std;
 
 // Key control boolean
@@ -42,8 +43,10 @@ std::vector<glm::vec3> temp_C(3);
 
 glm::vec2 cursor;
 int insertIndex = 0;
-int triangle;
+int triangle = -1;
 bool drag = false;
+int closest;
+#define PI 3.14159265
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -87,14 +90,18 @@ int getCurrentTriangle(glm::vec2 cursor) {
 }
 
 void deleteTriangle(int index) {
-    for (int i = 0; i < 3; i ++) {
-        V.pop_back();
-    }
-    int temp = index * 3;
-    V.erase(V.begin() + temp, V.begin() + temp + 3);
+    if (index > -1) {
+        for (int i = 0; i < 3; i ++) {
+            V.pop_back();
+        }
+        int temp = index * 3;
+        V.erase(V.begin() + temp, V.begin() + temp + 3);
 
-    insertIndex = (int)V.size();
-    V.resize(V.size() + 3);
+        insertIndex = (int)V.size();
+        V.resize(V.size() + 3);
+
+        triangle = -1;
+    }
 }
 
 void translateTriangle(int index, GLFWwindow* window) {
@@ -125,6 +132,78 @@ void resetColor(int i_triangle, float r, float g, float b) {
     }
 
     VBO_C.update(C);
+}
+
+void rotate(int triangle, double degree) {
+    
+    int t = triangle * 3;
+
+    // barycenter
+    float xg = (V[t][0] + V[t+1][0] + V[t+2][0]) / 3.0f;
+    float yg = (V[t][1] + V[t+1][1] + V[t+2][1]) / 3.0f;
+
+    degree = degree * PI / 180.0;
+
+    for (int i = 0; i < 3; i ++) {
+        V[t + i][0] = V[t + i][0] - xg;
+        V[t + i][1] = V[t + i][1] - yg;
+
+        double a = V[t + i][0]*cos(degree) - V[t + i][1]*(float)sin(degree);
+        V[t + i][0] = (float) a;
+        double b = V[t + i][0]*sin(degree) + V[t + i][1]*(float)cos(degree);
+        V[t + i][1] = (float) b;
+
+        V[t + i][0] = V[t + i][0] + xg;
+        V[t + i][1] = V[t + i][1] + yg;
+    }
+
+    VBO.update(V);
+}
+
+void scale(int triangle, float perc) {
+
+    int t = triangle * 3;
+
+    // barycenter
+    float xg = (V[t][0] + V[t+1][0] + V[t+2][0]) / 3.0f;
+    float yg = (V[t][1] + V[t+1][1] + V[t+2][1]) / 3.0f;
+
+    for (int i = 0; i < 3; i ++) {
+        V[t + i][0] = V[t + i][0] - xg;
+        V[t + i][1] = V[t + i][1] - yg;
+
+        V[t + i][0] = V[t + i][0]*perc;
+        V[t + i][1] = V[t + i][1]*perc;
+
+        V[t + i][0] = V[t + i][0] + xg;
+        V[t + i][1] = V[t + i][1] + yg;
+    }
+
+    VBO.update(V);
+}
+
+int getClosestVertex(glm::vec2 cursor) {
+    float x = cursor[0];
+    float y = cursor[1];
+
+    float temp = 0;
+    float dist;
+    int result;
+
+    for (int i = 0; i < V.size(); i ++) {
+        dist = pow((V[i][0]-x), 2) + pow((V[i][1]-y), 2);
+        if (temp) {
+            if (dist < temp) {
+                temp = dist;
+                result = i;
+            }
+        } else {
+            temp = dist;
+            result = i;
+        }
+    }
+
+    return result;
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -158,6 +237,12 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         triangle = getCurrentTriangle(cursor); // select triangle
         deleteTriangle(triangle); // delete triangle
         pKey = false;
+    }
+
+    // Color mode
+    if (cKey && action == GLFW_PRESS) {
+        cursor = getCurrentWorldPos(window);
+        closest = getClosestVertex(cursor);
     }
 
     // Upload the change to the GPU
@@ -195,12 +280,117 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             }
             break;
 
+        // 'h': rotate 10 degree clockwise
+        case GLFW_KEY_H:
+            if (action == GLFW_PRESS && triangle > -1) {
+                rotate(triangle, -10.0);
+                cout << "triangle rotate 10 degree clockwise \n";
+            }
+            break;
+
+        // 'j': rotate 10 degree counter-clockwise
+        case GLFW_KEY_J:
+            if (action == GLFW_PRESS && triangle > -1) {
+                rotate(triangle, 10.0);
+                cout << "triangle rotate 10 degree counter-clockwise \n";
+            }
+            break;
+
+        // 'k': scale up 25%
+        case GLFW_KEY_K:
+            if (action == GLFW_PRESS && triangle > -1) {
+                scale(triangle, 1.25);
+                cout << "triangle scale up 25% \n";
+            }
+            break;
+
+        // 'l': scale down 25%
+        case GLFW_KEY_L:
+            if (action == GLFW_PRESS && triangle > -1) {
+                scale(triangle, 0.75);
+                cout << "triangle scale down 25% \n";
+            }
+            break;
+
+        // 'c': color mode
+        case GLFW_KEY_C:
+            if (action == GLFW_PRESS) {
+                cKey = true;
+                cout << "color mode \n";
+            }
+            break;
+
+        // '1' ~ '9': different color
+        case GLFW_KEY_1:
+            if (cKey) {
+                C[closest] = glm::vec3(1.0, 0.0, 0.0); // red
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_2:
+            if (cKey) {
+                C[closest] = glm::vec3(0.0, 1.0, 0.0); // green
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_3:
+            if (cKey) {
+                C[closest] = glm::vec3(0.0, 0.0, 1.0); // blue
+                cKey = false;
+            }
+            break;
+        
+        case GLFW_KEY_4:
+            if (cKey) {
+                C[closest] = glm::vec3(0.0, 1.0, 1.0); // cyan
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_5:
+            if (cKey) {
+                C[closest] = glm::vec3(1.0, 0.0, 1.0); // magenta
+                cKey = false;
+            }
+            break;
+        
+        case GLFW_KEY_6:
+            if (cKey) {
+                C[closest] = glm::vec3(1.0, 1.0, 0.0); // yellow
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_7:
+            if (cKey) {
+                C[closest] = glm::vec3(0.5, 0.5, 1.0); // lighter blue
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_8:
+            if (cKey) {
+                C[closest] = glm::vec3(0.5, 1.0, 0.5); // lighter green
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_9:
+            if (cKey) {
+                C[closest] = glm::vec3(1.0, 0.5, 0.5); // lighter red
+                cKey = false;
+            }
+            break;
+
         default:
             break;
     }
 
     // Upload the change to the GPU
     VBO.update(V);
+    VBO_C.update(C);
 }
 
 int main(void)
