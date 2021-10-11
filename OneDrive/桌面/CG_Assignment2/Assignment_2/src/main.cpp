@@ -40,6 +40,7 @@ std::vector<glm::vec2> V(3);
 // Contains the per-vertex color
 std::vector<glm::vec3> C(3);
 std::vector<glm::vec3> temp_C(3);
+std::vector<glm::vec3> ColorBefore(3);
 
 glm::vec2 cursor;
 int insertIndex = 0;
@@ -115,7 +116,7 @@ void translateTriangle(int index, GLFWwindow* window) {
     for (int i = 0; i < 3; i ++) {
         V[t + i][0] = V[t + i][0] + trans_x;
         V[t + i][1] = V[t + i][1] + trans_y;
-        C[t + i] = glm::vec3(0, 0, 1);       
+        C[t + i] = glm::vec3(0, 0, 1); // highlight as blue      
     }
 
     cursor = getCurrentWorldPos(window);
@@ -224,11 +225,16 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         triangle = getCurrentTriangle(cursor); // select triangle
         if (triangle != -1) {
             drag = true;
+            ColorBefore = C;
         }
     } else if (oKey && action == GLFW_RELEASE) {
         drag = false;
         oKey = false;
-        resetColor(triangle, 1.0, 0.0, 0.0);
+        // retrieve original color
+        int index = triangle * 3;
+        C[index] = ColorBefore[index];
+        C[index + 1] = ColorBefore[index + 1];
+        C[index + 2] = ColorBefore[index + 2];
     }
 
     // Triangle deletion mode on
@@ -247,6 +253,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
     // Upload the change to the GPU
     VBO.update(V);
+    VBO_C.update(C);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
