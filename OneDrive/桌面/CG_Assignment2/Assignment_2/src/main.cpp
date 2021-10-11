@@ -17,6 +17,8 @@
 #include <glm/vec3.hpp> // glm::vec3
 #include <glm/vec4.hpp> // glm::vec4
 #include <glm/mat4x4.hpp> // glm::mat4
+#include <glm/mat4x4.hpp> // glm::mat4
+#include <glm/gtc/type_ptr.hpp> // glm::value_ptr
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 
 // Timer
@@ -42,6 +44,11 @@ std::vector<glm::vec3> C(3);
 std::vector<glm::vec3> temp_C(3);
 std::vector<glm::vec3> ColorBefore(3);
 
+// Contains the view transformation
+glm::mat4 view;
+glm::vec3 viewScale = glm::vec3(1.f, 1.f, 1.f);
+glm::vec3 viewTrans = glm::vec3(0.f, 0.f, 0.f);
+
 glm::vec2 cursor;
 int insertIndex = 0;
 int triangle = -1;
@@ -63,11 +70,16 @@ glm::vec2 getCurrentWorldPos(GLFWwindow* window) {
     int width, height;
     glfwGetWindowSize(window, &width, &height);
 
-    // Convert screen position to world coordinates
-    double xworld = ((xpos/double(width))*2)-1;
-    double yworld = (((height-1-ypos)/double(height))*2)-1; // NOTE: y axis is flipped in glfw
+    // // Convert screen position to world coordinates
+    // double xworld = ((xpos/double(width))*2)-1;
+    // double yworld = (((height-1-ypos)/double(height))*2)-1; // NOTE: y axis is flipped in glfw
 
-    return glm::vec2(xworld, yworld);
+    // Convert screen position to world coordinates
+    glm::vec4 p_screen(xpos,height-1-ypos,0,1);
+    glm::vec4 p_canonical((p_screen.x/width)*2-1,(p_screen.y/height)*2-1,0,1);
+    glm::vec4 p_world = glm::inverse(view) * p_canonical;
+
+    return glm::vec2(p_world.x, p_world.y);
 }
 
 bool pointInTriangle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y) {
@@ -391,6 +403,54 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             }
             break;
 
+        // '+': zooming in 20%
+        case GLFW_KEY_KP_ADD:
+            if (action == GLFW_PRESS) {
+                viewScale += 0.2f;
+                cout << "zoom in 20% \n";
+            }
+            break;
+
+        // '-': zooming out 20%
+        case GLFW_KEY_KP_SUBTRACT:
+            if (action == GLFW_PRESS) {
+                viewScale -= 0.2f;
+                cout << "zoom out 20% \n";
+            }
+            break;
+
+        // 'w': pan the view 20% (down)
+        case GLFW_KEY_W:
+            if (action == GLFW_PRESS) {
+                viewTrans[1] -= 0.2f;
+                cout << "pan down 20% \n";
+            }
+            break;
+
+        // 'a': pan the view 20% (right)
+        case GLFW_KEY_A:
+            if (action == GLFW_PRESS) {
+                viewTrans[0] += 0.2f;
+                cout << "pan right 20% \n";
+            }
+            break;
+
+        // 's': pan the view 20% (up)
+        case GLFW_KEY_S:
+            if (action == GLFW_PRESS) {
+                viewTrans[1] += 0.2f;
+                cout << "pan up 20% \n";
+            }
+            break;
+
+        // 'd': pan the view 20% (left)
+        case GLFW_KEY_D:
+            if (action == GLFW_PRESS) {
+                viewTrans[0] -= 0.2f;
+                cout << "pan left 20% \n";
+            }
+            break;
+
         default:
             break;
     }
@@ -483,9 +543,10 @@ int main(void)
                     "in vec2 position;"
                     "in vec3 color;"
                     "out vec3 f_color;"
+                    "uniform mat4 view;"
                     "void main()"
                     "{"
-                    "    gl_Position = vec4(position, 0.0, 1.0);"
+                    "    gl_Position = view * vec4(position, 0.0, 1.0);"
                     "    f_color = color;"
                     "}";
     const GLchar* fragment_shader =
@@ -535,6 +596,17 @@ int main(void)
         auto t_now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
         glUniform3f(program.uniform("triangleColor"), 0.0f, 0.0f, 0.0f);
+
+        // Get size of the window
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
+        float aspect_ratio = float(height)/float(width); // corresponds to the necessary width scaling
+        
+        view = glm::scale(glm::mat4(1.f), viewScale);
+        view = glm::translate(view, viewTrans);
+        // view = glm::scale(glm::mat4(viewScale), glm::vec3(aspect_ratio, 1.f, 1.f));
+
+        glUniformMatrix4fv(program.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
 
         // Clear the framebuffer
         glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
