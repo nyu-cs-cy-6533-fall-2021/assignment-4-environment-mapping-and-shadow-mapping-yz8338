@@ -29,7 +29,7 @@
 using namespace std;
 
 // Key control boolean
-bool iKey, oKey, pKey, cKey;
+bool iKey, oKey, pKey, cKey,qKey;
 
 // VertexBufferObject wrapper
 VertexBufferObject VBO;
@@ -38,6 +38,8 @@ VertexBufferObject VBO_C;
 // Contains the vertex positions
 //Eigen::MatrixXf V(2,3);
 std::vector<glm::vec2> V(3);
+std::vector<glm::vec2> Start(3);
+std::vector<glm::vec2> End(3);
 
 // Contains the per-vertex color
 std::vector<glm::vec3> C(3);
@@ -54,6 +56,7 @@ int insertIndex = 0;
 int triangle = -1;
 bool drag = false;
 int closest;
+float start_t;
 #define PI 3.14159265
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -123,7 +126,7 @@ void translateTriangle(int index, GLFWwindow* window) {
     float trans_x = temp[0] - cursor[0];
     float trans_y = temp[1] - cursor[1];
 
-    int t = triangle * 3;
+    int t = index * 3;
 
     for (int i = 0; i < 3; i ++) {
         V[t + i][0] = V[t + i][0] + trans_x;
@@ -217,6 +220,27 @@ int getClosestVertex(glm::vec2 cursor) {
     }
 
     return result;
+}
+
+void keyFraming(std::vector<glm::vec2> Start, std::vector<glm::vec2> End, float time) {
+    if (!start_t) {
+        start_t = time;
+    }
+
+    float interval = time - start_t;
+    cout << interval << "\n";
+
+    for (int i = 0; i < V.size() - 3; i ++) {
+        V[i][0] = Start[i][0] + (End[i][0] - Start[i][0]) * interval;
+        V[i][1] = Start[i][1] + (End[i][1] - Start[i][1]) * interval;
+    }
+
+    if (interval > 1.0f) {
+        qKey = false;
+        cout << "quit keyframing";
+    }
+
+    VBO.update(V);
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -404,7 +428,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             break;
 
         // '+': zooming in 20%
-        case GLFW_KEY_KP_ADD:
+        case GLFW_KEY_EQUAL:
             if (action == GLFW_PRESS) {
                 viewScale += 0.2f;
                 cout << "zoom in 20% \n";
@@ -412,7 +436,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             break;
 
         // '-': zooming out 20%
-        case GLFW_KEY_KP_SUBTRACT:
+        case GLFW_KEY_MINUS:
             if (action == GLFW_PRESS) {
                 viewScale -= 0.2f;
                 cout << "zoom out 20% \n";
@@ -448,6 +472,19 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             if (action == GLFW_PRESS) {
                 viewTrans[0] -= 0.2f;
                 cout << "pan left 20% \n";
+            }
+            break;
+
+        // 'q': keyframe animation of position
+        case GLFW_KEY_Q:
+            if (action == GLFW_PRESS) {
+                qKey = true;
+                Start = V;
+                End = V;
+                for (int i = 0; i < Start.size() - 3; i ++) {
+                    End[i][0] = Start[i][0] + 0.6f;
+                }
+                cout << "keyframing \n";
             }
             break;
 
@@ -646,6 +683,11 @@ int main(void)
             if (drag) {
                 translateTriangle(triangle, window); // highlight & translation
             }
+        }
+
+        // Keyframing
+        if (qKey) {
+            keyFraming(Start, End, time);
         }
 
         // Swap front and back buffers
