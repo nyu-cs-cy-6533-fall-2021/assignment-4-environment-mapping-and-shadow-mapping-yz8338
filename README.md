@@ -23,8 +23,10 @@ case GLFW_KEY_I:
     }
     break;
 ```
-We begin drawing triangle with preview in the main loop then. Detect if the insertion mode is on by checking 'iKey'; we also use variable 'insertIndex' which starts at 0 and record the inserted number of points to draw triangles. If the 'insertIndex' can be divided by 3, we draw point; if it divides 3 and the remainder is 1, we draw line; otherwise, draw the border of triangle. The color of the inserting point is set to black at the beginning and the point position is obtained by 'getCurrentWorldPos' function which I defined before.
+
+We begin drawing triangle with preview in the main render loop then. Detect if the insertion mode is on by checking 'iKey'; we also use variable 'insertIndex' which starts at 0 and record the inserted number of points to draw triangles. If the 'insertIndex' can be divided by 3, we draw point; if it divides 3 and the remainder is 1, we draw line; otherwise, draw the border of triangle. The color of the inserting point is set to black at the beginning and the position of point is obtained by 'getCurrentWorldPos' function which I defined before.
 ```bash
+// in render loop
 if (iKey) {
     V[insertIndex] = getCurrentWorldPos(window);
     VBO.update(V); 
@@ -61,7 +63,8 @@ glm::vec2 getCurrentWorldPos(GLFWwindow* window) {
     return glm::vec2(p_world.x, p_world.y);
 }
 ```
-The 'insertIndex' and all the points of triangle is determined by catching mouse click event in mouse_button_callback function. If iKey is true and the mosue is clicked, we assign the current position of cursor into the current point. Then increment the recorder 'insertIndex' by 1. Next, we determine whether it is the third point of the current triangle, if it is, then set iKey to false and set the color of all points in this triangle to red by 'resetColor' function that I defined.
+
+The 'insertIndex' and all the points of triangle is determined by catching mouse click event in mouse_button_callback function. If iKey is true and the mouse is clicked, we assign the current position of cursor into the current point. Then increment the recorder 'insertIndex' by 1. Next, we determine whether it is the third point of the current triangle, if it is, then set iKey to false and set the color of all points in this triangle to red by 'resetColor' function that I defined.
 ```bash
 void resetColor(int i_triangle, float r, float g, float b) {
     int t = i_triangle * 3;
@@ -84,8 +87,10 @@ void resetColor(int i_triangle, float r, float g, float b) {
         }
     }
 ```
+
 The triangles is displayed all the time by the following code in main loop. We first draw all triangles in its color, and then for all triangle, we reset vertex color to black and draw border by GL_LINE_LOOP for them. The program record the original color at first and then re-assign the original color back after drawing the border.
 ```bash
+// in render loop
 glDrawArrays(GL_TRIANGLES, 0, insertIndex);
      
 for (int i = 0; i < insertIndex / 3; i ++) {
@@ -109,9 +114,11 @@ case GLFW_KEY_O:
     }
     break;
 ```
+
 If the mode is active, we detect the press, move and release activities in mouse_button_callback function. If 'oKey' is true and the mouse is pressing, we record the current cursor position by getCurrentWorldPos function. Then use the cursor's position to detect whether there is a triangle under the cursor by 'getCurrentTriangle(cursor)'. If there is no triangle, the return value is -1. If not, we set the variable 'drag' to true and use a temporary vector 'ColorBefore' to store the current colors. Because we need to highlight the triangle as blue when dragging the selected one. 
 If the mode is active and the mouse is release, we set 'drag' and 'oKey' to false. Then retrieve the original colors of the triangle.
 ```bash
+// in mouse_button_callback
 // Triangle translation mode on
     if (oKey && action == GLFW_PRESS) {
         cursor = getCurrentWorldPos(window);
@@ -130,6 +137,7 @@ If the mode is active and the mouse is release, we set 'drag' and 'oKey' to fals
         C[index + 2] = ColorBefore[index + 2];
     }
 ```
+
 For the 'getCurrentTriangle' function, it traverse all triangle in vector V and use the current cursor position with 'pointInTriangle' function to detect whether the cursor is upon a triangle. If so, return the index of triangle. If not, return -1.
 ```bash
 int getCurrentTriangle(glm::vec2 cursor) {
@@ -143,6 +151,7 @@ int getCurrentTriangle(glm::vec2 cursor) {
     return -1;
 }
 ```
+
 For the 'pointInTriangle' function, we use barycentric theory to determine whether a point is in given triangle. Then return the result as boolean value.
 ```bash
 bool pointInTriangle(float x1, float y1, float x2, float y2, float x3, float y3, float x, float y) {
@@ -154,8 +163,10 @@ bool pointInTriangle(float x1, float y1, float x2, float y2, float x3, float y3,
     return 0 <= a && a <= 1 && 0 <= b && b <= 1 && 0 <= c && c <= 1;
 }
 ```
+
 Finally, we detect whether 'drag' is true in the main loop. If the cursor is dragging, we use 'translateTriangle' function to update the real-time position of selected triangle. The first parameter 'triangle' is just the index returned from the getCurrentTriangle function. 
 ```bash
+// in render loop
 // Translation Mode
     if (oKey) {
        if (drag) {
@@ -163,6 +174,7 @@ Finally, we detect whether 'drag' is true in the main loop. If the cursor is dra
        }
     }
 ```
+
 In the 'translateTriangle' function, we get current cursor's position first. In order to calculate the movement of cursor, we use the current position to subtract the old position (which is recorded in global variable 'cursor'). Then, for each vertex in the triangle, we increment its coordinate by the movement of cursor. Simultaneously, change the vertex color to blue in order to highlight the triangle. In the end of this function, we record the current cursor position into 'cursor'.
 ```bash
 void translateTriangle(int index, GLFWwindow* window) {
