@@ -57,7 +57,6 @@ int triangle = -1;
 bool drag = false;
 int closest;
 float start_t;
-#define PI 3.14159265
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -158,19 +157,12 @@ void rotate(int triangle, double degree) {
     float xg = (V[t][0] + V[t+1][0] + V[t+2][0]) / 3.0f;
     float yg = (V[t][1] + V[t+1][1] + V[t+2][1]) / 3.0f;
 
-    degree = degree * PI / 180.0;
+    degree = degree * glm::pi<float>() / 180.0;
 
     for (int i = 0; i < 3; i ++) {
-        V[t + i][0] = V[t + i][0] - xg;
-        V[t + i][1] = V[t + i][1] - yg;
-
-        double a = V[t + i][0]*cos(degree) - V[t + i][1]*(float)sin(degree);
-        V[t + i][0] = (float) a;
-        double b = V[t + i][0]*sin(degree) + V[t + i][1]*(float)cos(degree);
-        V[t + i][1] = (float) b;
-
-        V[t + i][0] = V[t + i][0] + xg;
-        V[t + i][1] = V[t + i][1] + yg;
+        V[t + i] = V[t + i] - glm::vec2(xg, yg);
+        V[t + i] = V[t + i] * glm::mat2(cos(degree), -sin(degree), sin(degree), cos(degree));
+        V[t + i] = V[t + i] + glm::vec2(xg, yg);
     }
 
     VBO.update(V);
@@ -185,14 +177,9 @@ void scale(int triangle, float perc) {
     float yg = (V[t][1] + V[t+1][1] + V[t+2][1]) / 3.0f;
 
     for (int i = 0; i < 3; i ++) {
-        V[t + i][0] = V[t + i][0] - xg;
-        V[t + i][1] = V[t + i][1] - yg;
-
-        V[t + i][0] = V[t + i][0]*perc;
-        V[t + i][1] = V[t + i][1]*perc;
-
-        V[t + i][0] = V[t + i][0] + xg;
-        V[t + i][1] = V[t + i][1] + yg;
+        V[t + i] = V[t + i] - glm::vec2(xg, yg);
+        V[t + i] = V[t + i] * glm::vec2(perc, perc);
+        V[t + i] = V[t + i] + glm::vec2(xg, yg);
     }
 
     VBO.update(V);
