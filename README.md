@@ -8,7 +8,7 @@
 
 # Implementation & Result
 
-## Task 1:
+## Triangle Soup Editor (Task 1.1)
 
 
 # Compilation Instructions
