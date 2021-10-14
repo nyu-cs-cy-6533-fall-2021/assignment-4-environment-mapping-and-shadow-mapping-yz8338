@@ -330,6 +330,34 @@ void scale(int triangle, float perc) {
 
 ## Colors (Task 1.3)
 
+For this task, I changed the vertex_shader and fragment_shader with additional color vector, which is connected by the VBO_C buffer.
+```bash
+Program program;
+    const GLchar* vertex_shader =
+            "#version 150 core\n"
+                    "in vec2 position;"
+                    "in vec3 color;"
+                    "out vec3 f_color;"
+                    "uniform mat4 view;"
+                    "void main()"
+                    "{"
+                    "    gl_Position = view * vec4(position, 0.0, 1.0);"
+                    "    f_color = color;"
+                    "}";
+    const GLchar* fragment_shader =
+            "#version 150 core\n"
+                    "in vec3 f_color;"
+                    "out vec4 outColor;"
+                    "uniform vec3 triangleColor;"
+                    "void main()"
+                    "{"
+                    "    outColor = vec4(f_color, 1.0);"
+                    "}";
+    ......
+    ......
+    program.bindVertexAttribArray("color",VBO_C);
+```
+
 * Color mode (c):
 
 The color mode is detected by GLFW_KEY_C in key_callback function. If the 'c' key is pressed, we set the variable 'cKey' to true. After that, every press betweeen 1 to 9 can enable the color change activity. The point which requires change is recorded in the global variable 'closest', which is detected and assigned in 'getClosestVertex' function when mouse click event happened under color mode. We just change the the 'closest' point's color within color vector C directly to different colors.
@@ -417,6 +445,154 @@ The mouseclick is detected in mouse_button_callback function as well. If the col
         closest = getClosestVertex(cursor);
     }
 ```
+
+For the getClosestVertex function, we traverse all the vertex in vector V and calculate their distance to cursor position, then find the minimal one, assign the vertex's index to 'result' and return it.
+```bash
+int getClosestVertex(glm::vec2 cursor) {
+    float x = cursor[0];
+    float y = cursor[1];
+
+    float temp = 0;
+    float dist;
+    int result;
+
+    for (int i = 0; i < V.size(); i ++) {
+        dist = pow((V[i][0]-x), 2) + pow((V[i][1]-y), 2);
+        if (temp) {
+            if (dist < temp) {
+                temp = dist;
+                result = i;
+            }
+        } else {
+            temp = dist;
+            result = i;
+        }
+    }
+
+    return result;
+}
+```
+
+## View Control (Task 1.4)
+
+For this task, I create a matrix for view transformation and two other vectors viewScale and viewTrans to change the view matrix.
+```bash
+// Contains the view transformation
+glm::mat4 view;
+glm::vec3 viewScale = glm::vec3(1.f, 1.f, 1.f);
+glm::vec3 viewTrans = glm::vec3(0.f, 0.f, 0.f);
+```
+
+Then, I multiply the view matrix with original vertex within vertex_shader. 
+```bash
+const GLchar* vertex_shader =
+        "#version 150 core\n"
+                "in vec2 position;"
+                "in vec3 color;"
+                "out vec3 f_color;"
+                "uniform mat4 view;"
+                "void main()"
+                "{"
+                "    gl_Position = view * vec4(position, 0.0, 1.0);"
+                "    f_color = color;"
+                "}";
+```
+
+* Zoom in & out (+ & -)
+
+Similar as before, the key + & - is detected within key_callback function. If + is pressed, we increment the viewScale vector by 0.2. If - is pressed, we decrement viewScale vector by 0.2f.
+```bash
+        // in key_callback
+        // '+': zooming in 20%
+        case GLFW_KEY_EQUAL:
+            if (action == GLFW_PRESS) {
+                viewScale += 0.2f;
+                cout << "zoom in 20% \n";
+            }
+            break;
+
+        // '-': zooming out 20%
+        case GLFW_KEY_MINUS:
+            if (action == GLFW_PRESS) {
+                viewScale -= 0.2f;
+                cout << "zoom out 20% \n";
+            }
+            break;
+```
+
+This viewScale vector is applied to the view matrix within the render loop by glm::scale.
+```bash
+view = glm::scale(glm::mat4(1.f), viewScale);
+```
+
+* Pan the view (w, a, s, d):
+
+We change the viewTrans vector in order to translate the view as a whole. If w, a, s or d is pressed, change corresponding position element within the viewTrans vector.
+```bash
+        // 'w': pan the view 20% (down)
+        case GLFW_KEY_W:
+            if (action == GLFW_PRESS) {
+                viewTrans[1] -= 0.2f;
+                cout << "pan down 20% \n";
+            }
+            break;
+
+        // 'a': pan the view 20% (right)
+        case GLFW_KEY_A:
+            if (action == GLFW_PRESS) {
+                viewTrans[0] += 0.2f;
+                cout << "pan right 20% \n";
+            }
+            break;
+
+        // 's': pan the view 20% (up)
+        case GLFW_KEY_S:
+            if (action == GLFW_PRESS) {
+                viewTrans[1] += 0.2f;
+                cout << "pan up 20% \n";
+            }
+            break;
+
+        // 'd': pan the view 20% (left)
+        case GLFW_KEY_D:
+            if (action == GLFW_PRESS) {
+                viewTrans[0] -= 0.2f;
+                cout << "pan left 20% \n";
+            }
+            break;
+```
+
+The viewTrans vector also applies to the view matrix in the render loop.
+```bash
+view = glm::translate(view, viewTrans);
+```
+
+* Change user interaction:
+
+We ensure the user interaction adapted to the current view by applying the inverse of view matrix within getCurrentWorldPos function.
+```bash
+glm::vec2 getCurrentWorldPos(GLFWwindow* window) {
+    // Get the position of the mouse in the window
+    double xpos, ypos;
+    glfwGetCursorPos(window, &xpos, &ypos);
+
+    // Get the size of the window
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
+
+    // Convert screen position to world coordinates
+    glm::vec4 p_screen(xpos,height-1-ypos,0,1);
+    glm::vec4 p_canonical((p_screen.x/width)*2-1,(p_screen.y/height)*2-1,0,1);
+    glm::vec4 p_world = glm::inverse(view) * p_canonical;
+
+    return glm::vec2(p_world.x, p_world.y);
+}
+```
+
+## Add keyframing (Task 1.5)
+
+
+
 
 
 # Compilation Instructions
