@@ -1,4 +1,15 @@
-# assignment-2-2d-triangle-editor-and-rasterization-yz8338
+# CS-GY 6533 A – Interactive Computer Graphics - Fall 2021
+
+### Assignment 2
+
+*Yangfan Zhou*
+
+<yz8338@nyu.edu>
+
+# Implementation & Result
+
+## Task 1:
+
 
 # Compilation Instructions
 
