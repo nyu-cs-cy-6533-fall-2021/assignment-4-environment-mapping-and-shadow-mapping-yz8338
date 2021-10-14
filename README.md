@@ -332,9 +332,91 @@ void scale(int triangle, float perc) {
 
 * Color mode (c):
 
+The color mode is detected by GLFW_KEY_C in key_callback function. If the 'c' key is pressed, we set the variable 'cKey' to true. After that, every press betweeen 1 to 9 can enable the color change activity. The point which requires change is recorded in the global variable 'closest', which is detected and assigned in 'getClosestVertex' function when mouse click event happened under color mode. We just change the the 'closest' point's color within color vector C directly to different colors.
+```bash
+    // in key_callback
+    // 'c': color mode
+        case GLFW_KEY_C:
+            if (action == GLFW_PRESS) {
+                cKey = true;
+                cout << "color mode \n";
+            }
+            break;
 
+        // '1' ~ '9': different color
+        case GLFW_KEY_1:
+            if (cKey) {
+                C[closest] = glm::vec3(1.0, 0.0, 0.0); // red
+                cKey = false;
+            }
+            break;
 
+        case GLFW_KEY_2:
+            if (cKey) {
+                C[closest] = glm::vec3(0.0, 1.0, 0.0); // green
+                cKey = false;
+            }
+            break;
 
+        case GLFW_KEY_3:
+            if (cKey) {
+                C[closest] = glm::vec3(0.0, 0.0, 1.0); // blue
+                cKey = false;
+            }
+            break;
+        
+        case GLFW_KEY_4:
+            if (cKey) {
+                C[closest] = glm::vec3(0.0, 1.0, 1.0); // cyan
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_5:
+            if (cKey) {
+                C[closest] = glm::vec3(1.0, 0.0, 1.0); // magenta
+                cKey = false;
+            }
+            break;
+        
+        case GLFW_KEY_6:
+            if (cKey) {
+                C[closest] = glm::vec3(1.0, 1.0, 0.0); // yellow
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_7:
+            if (cKey) {
+                C[closest] = glm::vec3(0.5, 0.5, 1.0); // lighter blue
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_8:
+            if (cKey) {
+                C[closest] = glm::vec3(0.5, 1.0, 0.5); // lighter green
+                cKey = false;
+            }
+            break;
+
+        case GLFW_KEY_9:
+            if (cKey) {
+                C[closest] = glm::vec3(1.0, 0.5, 0.5); // lighter red
+                cKey = false;
+            }
+            break;
+```
+
+The mouseclick is detected in mouse_button_callback function as well. If the color mode is enabled and the mouse is clicked, we get current cursor position by getCurrentWorldPos function. Then pass the coordinate into getClosestVertex. The result will be passed back to the global variable 'closest', which is used to change vertex color.
+```bash
+// in mouse_button_callback
+// Color mode
+    if (cKey && action == GLFW_PRESS) {
+        cursor = getCurrentWorldPos(window);
+        closest = getClosestVertex(cursor);
+    }
+```
 
 
 # Compilation Instructions
