@@ -175,7 +175,7 @@ Finally, we detect whether 'drag' is true in the main loop. If the cursor is dra
     }
 ```
 
-In the 'translateTriangle' function, we get current cursor's position first. In order to calculate the movement of cursor, we use the current position to subtract the old position (which is recorded in global variable 'cursor'). Then, for each vertex in the triangle, we increment its coordinate by the movement of cursor. Simultaneously, change the vertex color to blue in order to highlight the triangle. In the end of this function, we record the current cursor position into 'cursor'.
+In the 'translateTriangle' function, we get current cursor's position first. In order to calculate the movement of cursor, we use the current position to subtract the old position (which is recorded in global variable 'cursor'). Then, for each vertex in the triangle, we increment its coordinate by the movement of cursor. Simultaneously, change the vertex color to blue in order to highlight the triangle. In the end of this function, we record the current cursor position into 'cursor'. Finally, update the current vertex vector V and color vector C.
 ```bash
 void translateTriangle(int index, GLFWwindow* window) {
     
@@ -240,6 +240,97 @@ void deleteTriangle(int index) {
 }
 ```
 
+## Rotation/Scale (Task 1.2)
+
+* Rotation (h & j):
+
+Rotation mode is detected in key_callback function at first. For h & j key, if the key is pressed and any triangle is selected, we pass the current triangle index into 'rotate' function to rotate the current triangle. As we mentioned before, after translation mode, the global variable 'triangle' isn't changed. Hence, if any triangle has been selected by translation mode, the 'triangle' variable will be greater than -1. However, for other mode like deletion mode, we reset this variable to -1 after finishing deletion.
+```bash
+// in key_callback
+// 'h': rotate 10 degree clockwise
+    case GLFW_KEY_H:
+        if (action == GLFW_PRESS && triangle > -1) {
+            rotate(triangle, -10.0);
+            cout << "triangle rotate 10 degree clockwise \n";
+        }
+        break;
+
+// 'j': rotate 10 degree counter-clockwise
+    case GLFW_KEY_J:
+        if (action == GLFW_PRESS && triangle > -1) {
+            rotate(triangle, 10.0);
+            cout << "triangle rotate 10 degree counter-clockwise \n";
+        }
+        break;
+```
+
+In rotate function, we pass two variable that is triangle index and the rotation degree. To begin with, calculate the first vertex index of the triangle and assign it to temporary variable 't'. Then calculate the barycenter for the current triangle using the vertex indexes. Before implement the rotation transformation, transfer the degree into radian. Finally, for every vertex of this triangle, translate it to the origin point, then multiply it with rotation matrix, after that translate it back by adding the position of barycenter. By doing this, the triangle can rotate around the barycenter. Update the current vector V by VBO.update(V).
+```bash
+void rotate(int triangle, double degree) {
+    
+    int t = triangle * 3;
+
+    // barycenter
+    float xg = (V[t][0] + V[t+1][0] + V[t+2][0]) / 3.0f;
+    float yg = (V[t][1] + V[t+1][1] + V[t+2][1]) / 3.0f;
+
+    degree = degree * glm::pi<float>() / 180.0;
+
+    for (int i = 0; i < 3; i ++) {
+        V[t + i] = V[t + i] - glm::vec2(xg, yg);
+        V[t + i] = V[t + i] * glm::mat2(cos(degree), -sin(degree), sin(degree), cos(degree));
+        V[t + i] = V[t + i] + glm::vec2(xg, yg);
+    }
+
+    VBO.update(V);
+}
+```
+
+* Scale (k & l):
+
+Similar to rotation mode, we first detect the key k & l within key_callback function. If the key is pressed and there is triangle selected before in translation mode, call 'scale' function.
+```bash
+// in key_callback
+// 'k': scale up 25%
+    case GLFW_KEY_K:
+        if (action == GLFW_PRESS && triangle > -1) {
+            scale(triangle, 1.25);
+            cout << "triangle scale up 25% \n";
+        }
+        break;
+
+// 'l': scale down 25%
+    case GLFW_KEY_L:
+        if (action == GLFW_PRESS && triangle > -1) {
+            scale(triangle, 0.75);
+            cout << "triangle scale down 25% \n";
+        }
+        break;
+```
+
+For the scale function, similar as rotate function, it first derive the vertexes' index and calculate the barycenter coordinate. Then, for every vertex in the triangle, move it towards origin point by subtracting barycenter's position, next scale it by multiplying the scaler, finally translate it back by adding barycenter's position. Update the current vertex vector V by VBO.update(V).
+```bash
+void scale(int triangle, float perc) {
+
+    int t = triangle * 3;
+
+    // barycenter
+    float xg = (V[t][0] + V[t+1][0] + V[t+2][0]) / 3.0f;
+    float yg = (V[t][1] + V[t+1][1] + V[t+2][1]) / 3.0f;
+
+    for (int i = 0; i < 3; i ++) {
+        V[t + i] = V[t + i] - glm::vec2(xg, yg);
+        V[t + i] = V[t + i] * glm::vec2(perc, perc);
+        V[t + i] = V[t + i] + glm::vec2(xg, yg);
+    }
+
+    VBO.update(V);
+}
+```
+
+## Colors (Task 1.3)
+
+* Color mode (c):
 
 
 
