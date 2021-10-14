@@ -198,6 +198,51 @@ void translateTriangle(int index, GLFWwindow* window) {
 }
 ```
 
+* Deletion mode (p):
+
+Also similar as before, the deletion mode is first detected in key_callback function with GLFW_KEY_P. If the 'k' key is pressed, we set the variable 'pKey' to true. The section is as follows:
+```bash
+case GLFW_KEY_P:
+    if (action == GLFW_PRESS) {
+        pKey = true;
+        cout << "triangle delete mode start \n";
+    }
+    break;
+```
+
+Next, we detect whether the user click certain triangle in this mode in mouse_button_callback function. If 'pKey' is true and the mouse is clicked, obtain the current cursor position and pass it to getCurrentTriangle function. The getCurrentTriangle function is the same as the one in translation mode, and is explained before. After retrieving current triangle's index under the cursor, we pass the index into deleteTriangle function. Finally, set 'pKey' to false after deletion.
+```bash
+// in mouse_button_callback
+// Triangle deletion mode on
+    if (pKey && action == GLFW_PRESS) {
+        cursor = getCurrentWorldPos(window);
+        triangle = getCurrentTriangle(cursor); // select triangle
+        deleteTriangle(triangle); // delete triangle
+        pKey = false;
+    }
+```
+
+For the deleteTriangle function, it first check whether the triangle index is valid, i.e. there is a triangle under the cursor. If not, the function do nothing. If true, it first pop the last three element of the vector (because I set the vector V's original size as 3). Then, it use vector's erase method to delete the triangle at the position of index (the index is triangle index, we need to first multiply it by 3 to get the first vertex index). Finally, resize the V vector and set the current triangle index as -1.
+```bash
+void deleteTriangle(int index) {
+    if (index > -1) {
+        for (int i = 0; i < 3; i ++) {
+            V.pop_back();
+        }
+        int temp = index * 3;
+        V.erase(V.begin() + temp, V.begin() + temp + 3);
+
+        insertIndex = (int)V.size();
+        V.resize(V.size() + 3);
+
+        triangle = -1;
+    }
+}
+```
+
+
+
+
 
 
 
