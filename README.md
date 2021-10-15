@@ -591,7 +591,54 @@ glm::vec2 getCurrentWorldPos(GLFWwindow* window) {
 
 ## Add keyframing (Task 1.5)
 
+For this task, I implemented a key press event for moving to the next frame. When user press key 'q', all of the displaying objects will begin moving right 0.6f distance. Similarly, the key press event is caught in key_callback function. If the key is pressed, set the global variable 'qKey' to true. Then record the current status into 'Start' vector as the start frame, assign the end frame vector 'End' by the current status first. After that, edit the end frame such that each vector's x coordinate is incremented by 0.6f
+```bash
+        // in key_callback
+        // 'q': keyframe animation of position
+        case GLFW_KEY_Q:
+            if (action == GLFW_PRESS) {
+                qKey = true;
+                Start = V;
+                End = V;
+                for (int i = 0; i < Start.size() - 3; i ++) {
+                    End[i][0] = Start[i][0] + 0.6f;
+                }
+                cout << "keyframing \n";
+            }
+            break;
+```
 
+Secondly, in the render loop, if the 'qKey' is true, we use 'keyFraming' function with Start frame, End frame and current time as parameters.
+```bash
+// Keyframing
+if (qKey) {
+     keyFraming(Start, End, time);
+}
+```
+
+As for the 'keyFraming' function, we assign the vertexes position according to linear interpolation. We first check that if the current frame is the first frame. A global variable called 'start_t' is defined by not assigned before entering the loop, so if it is null, we assign current time to it. After that, we calculate the time interval. For each vertex in V, we assign the position by adding the product of interval and (end frame - start frame). If interval is greater than 1 second, set the qKey as false and quit keyframing. Finally, update VBO after each frame.
+```bash
+void keyFraming(std::vector<glm::vec2> Start, std::vector<glm::vec2> End, float time) {
+    if (!start_t) {
+        start_t = time;
+    }
+
+    float interval = time - start_t;
+    cout << interval << "\n";
+
+    for (int i = 0; i < V.size() - 3; i ++) {
+        V[i][0] = Start[i][0] + (End[i][0] - Start[i][0]) * interval;
+        V[i][1] = Start[i][1] + (End[i][1] - Start[i][1]) * interval;
+    }
+
+    if (interval > 1.0f) {
+        qKey = false;
+        cout << "quit keyframing";
+    }
+
+    VBO.update(V);
+}
+```
 
 
 
