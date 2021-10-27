@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\hz36a\OneDrive\桌面\Assignment3\Assignment_3\build\CMakeFiles\baae019b29a55207ece621416a521fdd\update_mappings.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\hz36a\OneDrive\桌面\Assignment3\ext\glfw\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\hz36a\OneDrive\桌面\Assignment3\ext\glfw\src\mappings.h.in">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="C:\Users\hz36a\OneDrive\桌面\Assignment3\ext\glfw\CMake\GenerateMappings.cmake" />
+    <None Include="C:\Users\hz36a\OneDrive\桌面\Assignment3\Assignment_3\build\glfw\src\CMakeFiles\update_mappings" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{C137FF36-01D8-356F-8E78-520BED87A9AA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{D6705388-2BEE-3203-A1C5-F7BF5254E089}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
