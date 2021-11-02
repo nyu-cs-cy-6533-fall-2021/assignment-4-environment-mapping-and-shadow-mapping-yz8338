@@ -29,6 +29,7 @@ using namespace std;
 
 std::vector<VertexArrayObject> VAOs;
 std::vector<VertexBufferObject> VBOs;
+std::vector<VertexBufferObject> NBOs;
 
 // Contains the m-v-p matrix
 glm::mat4 model;
@@ -39,6 +40,9 @@ glm::mat4 projection;
 char renderMode = 'w';
 // Set original projection mode as 'orthographic'
 char projMode = 'o';
+
+// Set ray for ray-casting
+glm::vec3 ray;
 
 // Contains the vertex for a unit cube
 static const GLfloat vertex_list[][3] = {
@@ -73,18 +77,29 @@ void importCube() {
     VAO.bind();
 
     VertexBufferObject VBO;
+    VertexBufferObject NBO;
     std::vector<glm::vec3> V;
+    std::vector<glm::vec3> N;
 
     VBO.init();
+    NBO.init();
     for(int i = 0; i < 12; i ++) {
+        glm::vec3 triangle[3];
         for(int j = 0; j < 3; j ++) {
-            V.push_back(glm::vec3(vertex_list[index_list[i][j]][0], vertex_list[index_list[i][j]][1], vertex_list[index_list[i][j]][2]));
+            triangle[j] = glm::vec3(vertex_list[index_list[i][j]][0], vertex_list[index_list[i][j]][1], vertex_list[index_list[i][j]][2]);
+            V.push_back(triangle[j]);
         }  
+        glm::vec3 normal = cross(triangle[1] - triangle[0], triangle[2] - triangle[0]);
+        for(int temp = 0; temp < 3; temp ++) {
+            N.push_back(normal);
+        }
     }
     VBO.update(V);
+    NBO.update(N);
 
     VAOs.push_back(VAO);
     VBOs.push_back(VBO);
+    NBOs.push_back(NBO);
 }
 
 void importOff(const char* filename) {
@@ -102,9 +117,12 @@ void importOff(const char* filename) {
         VAO.bind();
 
         VertexBufferObject VBO;
+        VertexBufferObject NBO;
         std::vector<glm::vec3> V;
+        std::vector<glm::vec3> N;
 
         VBO.init();
+        NBO.init();
 
         if (line == "OFF") {
             getline(offFile, line);
@@ -199,13 +217,28 @@ void importOff(const char* filename) {
                 while (ss >> temp) {
                     int index = temp * 3;
                     V.push_back(glm::vec3(vertex[index], vertex[index+1], vertex[index+2]));
+                    // N.push_back(glm::vec3(0, 0, 1));
+                }
+            }
+
+            for(int i = 0; i < V.size(); i += 3) {
+                glm::vec3 triangle[3];
+                triangle[0] = V[i];
+                triangle[1] = V[i + 1];
+                triangle[2] = V[i + 2];
+
+                glm::vec3 normal = cross(triangle[1] - triangle[0], triangle[2] - triangle[0]);
+                for(int temp = 0; temp < 3; temp ++) {
+                    N.push_back(normal);
                 }
             }
         }
         VBO.update(V);
+        NBO.update(N);
 
         VAOs.push_back(VAO);
         VBOs.push_back(VBO);
+        NBOs.push_back(NBO);
         offFile.close();
     } else {
         cout << "Can not open!";
@@ -227,16 +260,22 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     int width, height;
     glfwGetWindowSize(window, &width, &height);
 
-    // Convert screen position to world coordinates
-    double xworld = ((xpos/double(width))*2)-1;
-    double yworld = (((height-1-ypos)/double(height))*2)-1; // NOTE: y axis is flipped in glfw
+    // Update the ray if the left button is pressed
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        // Convert screen position to world coordinates
+        double xworld = ((xpos/double(width))*2)-1;
+        double yworld = (((height-1-ypos)/double(height))*2)-1; // NOTE: y axis is flipped in glfw
+        glm::vec2 ray_nds = glm::vec2(xworld, yworld);
 
-    // // Update the position of the first vertex if the left button is pressed
-    // if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    //     V[0] = glm::vec3(xworld, yworld, 0);
-
-    // Upload the change to the GPU
-    // VBO.update(V);
+        glm::vec4 ray_clip = glm::vec4(ray_nds, -1.0, 1.0);
+        glm::vec4 ray_eye = inverse(projection) * ray_clip;
+        ray_eye = glm::vec4(ray_eye[0], ray_eye[1], -1.0, 0.0);
+        glm::vec3 ray_wor = glm::vec3((inverse(view) * ray_eye).x, (inverse(view) * ray_eye).y, (inverse(view) * ray_eye).z);
+        ray = normalize(ray_wor);
+        cout << ray.x;
+        cout << ray.y;
+        cout << "\n";
+    }
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -357,8 +396,15 @@ int main(void)
     V[0] = glm::vec3(0.8f, 0.8f, 0.0f);
     lightVBO.update(V);
 
+    VertexBufferObject lightNBO;
+    std::vector<glm::vec3> N(1);
+    lightNBO.init();
+    N[0] = glm::vec3(0, 0, 1);
+    lightNBO.update(N);
+
     VAOs.push_back(lightVAO);
     VBOs.push_back(lightVBO);
+    NBOs.push_back(lightNBO);
 
     // Initialize the OpenGL Program
     // A program controls the OpenGL pipeline and it must contains
@@ -390,7 +436,19 @@ int main(void)
                     "uniform vec3 objectColor;"
                     "void main()"
                     "{"
-                    "    outColor = vec4(objectColor, 1.0);"
+                    "    float ambientStrength = 0.1;"
+                    "    vec3 ambient = ambientStrength * lightColor;"
+                    "    vec3 norm = normalize(Normal);"
+                    "    vec3 lightDir = normalize(lightPos - FragPos);"
+                    "    float diff = max(dot(norm, lightDir), 0.0);"
+                    "    vec3 diffuse = diff * lightColor;"
+                    "    float specularStrength = 0.5;"
+                    "    vec3 viewDir = normalize(viewPos - FragPos);"
+                    "    vec3 reflectDir = reflect(-lightDir, norm);"
+                    "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);"
+                    "    vec3 specular = specularStrength * spec * lightColor;"
+                    "    vec3 result = (ambient + diffuse + specular) * objectColor;"
+                    "    outColor = vec4(result, 1.0);"
                     "}";
                     
     const GLchar* light_vertex_shader =
@@ -476,8 +534,13 @@ int main(void)
             glUniformMatrix4fv(program.uniform("model"), 1, GL_FALSE, glm::value_ptr(model));
             glUniformMatrix4fv(program.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
             glUniformMatrix4fv(program.uniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
-            glUniform3f(program.uniform("objectColor"), 0.0f, 0.0f, 0.0f);
+            glUniform3f(program.uniform("lightColor"), 1.0f, 1.0f, 1.0f);
+            glUniform3f(program.uniform("objectColor"), 1.0f, 0.5f, 0.31f);
+            glUniform3f(program.uniform("lightPos"), 0.8f, 0.8f, 0.0f);
+            //glUniform3f(program.uniform("viewPos"), camera.Position);
+            glUniform3f(program.uniform("viewPos"), 0.0f, 0.0f, 1.0f);
             program.bindVertexAttribArray("position", VBOs[i]);
+            program.bindVertexAttribArray("normal", NBOs[i]);
 
             // Render
             int cols = VBOs[i].cols;
@@ -496,7 +559,6 @@ int main(void)
                 for (int i = 0; i < cols; i += 3) {
                     glDrawArrays(GL_TRIANGLES, i, 3);
                 }
-
             }
         }
 
