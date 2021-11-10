@@ -33,21 +33,21 @@ std::vector<VertexBufferObject> NBOs; // plane normals
 std::vector<VertexBufferObject> vNBOs; // vertex normals
 
 // Contains the m-v-p matrix
-// glm::mat4 model;
 vector<glm::mat4> model;
+glm::vec3 cameraPos;
 glm::mat4 view;
 glm::mat4 projection;
 
 // Render mode
 vector<char> renderMode;
 
-// Set original projection mode as 'orthographic'
-char projMode = 'o';
-
 // For stencil buffer picking
 GLbyte color[4];
 GLfloat depth;
 GLuint index;
+
+// Projection mode
+bool perspective = false;
 
 // Contains the vertex for a unit cube
 static const GLfloat vertex_list[][3] = {
@@ -396,12 +396,44 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 model[index] = glm::scale(model[index], glm::vec3(1.5));
             break;
 
+        // Delete
+        case GLFW_KEY_BACKSPACE:
+            if (action == GLFW_PRESS){
+                cout << index;
+                if (index > 0) {
+                    VAOs.erase(VAOs.begin() + index - 1, VAOs.begin() + index);
+                    VBOs.erase(VBOs.begin() + index - 1, VBOs.begin() + index);
+                    NBOs.erase(NBOs.begin() + index - 1, NBOs.begin() + index);
+                    vNBOs.erase(vNBOs.begin() + index - 1, vNBOs.begin() + index);
+                    index = 0;
+                }
+            }
+            break;
+
         // Projection mode
         case GLFW_KEY_X:
-            projMode = 'o'; // orthographic camera
+            perspective = false;
             break;
         case GLFW_KEY_Z:
-            projMode = 'p'; // perspective mode
+            perspective = true;
+            break;
+
+        // Camera translation
+        case GLFW_KEY_UP:
+            if (action == GLFW_PRESS)
+                cameraPos += glm::vec3(0.0, 0.1, 0.0);
+            break;
+        case GLFW_KEY_DOWN:
+            if (action == GLFW_PRESS)
+                cameraPos += glm::vec3(0.0, -0.1, 0.0);
+            break;
+        case GLFW_KEY_LEFT:
+            if (action == GLFW_PRESS)
+                cameraPos += glm::vec3(-0.1, 0.0, 0.0);
+            break;
+        case GLFW_KEY_RIGHT:
+            if (action == GLFW_PRESS)
+                cameraPos += glm::vec3(0.1, 0.0, 0.0);
             break;
 
 
@@ -571,6 +603,12 @@ int main(void)
     // Update viewport
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
+    // Set default projection
+    projection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
+
+    // Set default camera
+    cameraPos = glm::vec3(0.0, 0.0, 0.6);
+
     while (!glfwWindowShouldClose(window))
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -591,8 +629,19 @@ int main(void)
         // Bind program for light
         program.init(light_vertex_shader,light_fragment_shader,"lightColor");
         program.bind();
-        projection = glm::mat4(1.0f);
-        view = glm::mat4(1.0f);
+
+        // Get size of the window
+        int width, height;
+        glfwGetWindowSize(window, &width, &height);
+        float aspect_ratio = float(height)/float(width);
+
+        view = glm::lookAt(cameraPos, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
+
+        if(perspective) {
+            projection = glm::perspective(glm::radians(45.0f), 1/aspect_ratio, 0.5f, 150.f);
+        } else {
+            projection = glm::ortho(-1.0f, 1.0f, -1.0f * aspect_ratio, 1.0f * aspect_ratio, -10.0f, 10.0f);
+        }
 
         glUniformMatrix4fv(program.uniform("model"), 1, GL_FALSE, glm::value_ptr(model[1]));
         glUniformMatrix4fv(program.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -616,8 +665,6 @@ int main(void)
             // Bind program
             program.init(vertex_shader,fragment_shader,"outColor");
             program.bind();
-            projection = glm::mat4(1.0f);
-            view = glm::mat4(1.0f);
 
             glUniformMatrix4fv(program.uniform("model"), 1, GL_FALSE, glm::value_ptr(model[i+1]));
             glUniformMatrix4fv(program.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -629,8 +676,7 @@ int main(void)
             } else {
                 glUniform3f(program.uniform("objectColor"), 0.0f, 1.0f, 0.0f);
             }
-            glUniform3f(program.uniform("lightPos"), 0.8f, 0.8f, 0.0f);
-            //glUniform3f(program.uniform("viewPos"), camera.Position);
+            glUniform3f(program.uniform("lightPos"), 0.8f, 0.8f, 0.4f);
             glUniform3f(program.uniform("viewPos"), 0.0f, 0.0f, 1.0f);
             program.bindVertexAttribArray("position", VBOs[i]);
             program.bindVertexAttribArray("normal", NBOs[i]);
