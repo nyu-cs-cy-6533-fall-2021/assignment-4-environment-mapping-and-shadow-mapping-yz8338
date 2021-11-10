@@ -49,6 +49,9 @@ GLuint index;
 // Projection mode
 bool perspective = false;
 
+// Light position
+glm::vec3 lightPosition = glm::vec3(-0.6f, 0.5f, 0.4f);
+
 // Contains the vertex for a unit cube
 static const GLfloat vertex_list[][3] = {
     -0.5f, -0.5f, -0.5f,
@@ -506,7 +509,7 @@ int main(void)
     std::vector<glm::vec3> V(1);
 
     lightVBO.init();
-    V[0] = glm::vec3(0.8f, 0.8f, 0.0f);
+    V[0] = lightPosition;
     lightVBO.update(V);
 
     VertexBufferObject lightNBO;
@@ -552,7 +555,7 @@ int main(void)
                     "uniform vec3 objectColor;"
                     "void main()"
                     "{"
-                    "    float ambientStrength = 0.1;"
+                    "    float ambientStrength = 0.4;"
                     "    vec3 ambient = ambientStrength * lightColor;"
                     "    vec3 norm = normalize(Normal);"
                     "    vec3 lightDir = normalize(lightPos - FragPos);"
@@ -561,7 +564,7 @@ int main(void)
                     "    float specularStrength = 0.5;"
                     "    vec3 viewDir = normalize(viewPos - FragPos);"
                     "    vec3 reflectDir = reflect(-lightDir, norm);"
-                    "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);"
+                    "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 16);"
                     "    vec3 specular = specularStrength * spec * lightColor;"
                     "    vec3 result = (ambient + diffuse + specular) * objectColor;"
                     "    outColor = vec4(result, 1.0);"
@@ -676,7 +679,7 @@ int main(void)
             } else {
                 glUniform3f(program.uniform("objectColor"), 0.0f, 1.0f, 0.0f);
             }
-            glUniform3f(program.uniform("lightPos"), 0.8f, 0.8f, 0.4f);
+            glUniform3f(program.uniform("lightPos"), lightPosition[0], lightPosition[1], lightPosition[2]);
             glUniform3f(program.uniform("viewPos"), 0.0f, 0.0f, 1.0f);
             program.bindVertexAttribArray("position", VBOs[i]);
             program.bindVertexAttribArray("normal", NBOs[i]);
