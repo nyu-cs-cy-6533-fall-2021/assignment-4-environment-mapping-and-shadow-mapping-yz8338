@@ -1,0 +1,10 @@
+^C:\USERS\HZ36A\ONEDRIVE\桌面\ASSIGNMENT4\ASSIGNMENT_4\BUILD\CMAKEFILES\54A6C5D20A649113C4A69A56ADF22348\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/hz36a/OneDrive/桌面/Assignment4/Assignment_4 -BC:/Users/hz36a/OneDrive/桌面/Assignment4/Assignment_4/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/hz36a/OneDrive/桌面/Assignment4/Assignment_4/build/Assignment4.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
