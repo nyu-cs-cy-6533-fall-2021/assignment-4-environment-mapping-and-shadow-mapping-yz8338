@@ -46,10 +46,7 @@ GLbyte color[4];
 GLfloat depth;
 GLuint index;
 
-// Projection mode
-bool perspective = false;
-
-// Light position
+// Circular light radius
 float light_r = 1.0f;
 
 // Contains the vertex for a unit cube
@@ -409,14 +406,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             }
             break;
 
-        // Projection mode
-        case GLFW_KEY_X:
-            perspective = false;
-            break;
-        case GLFW_KEY_Z:
-            perspective = true;
-            break;
-
         // Camera translation
         case GLFW_KEY_UP:
             if (action == GLFW_PRESS)
@@ -599,11 +588,11 @@ int main(void)
     // Update viewport
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // Set default projection
-    projection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
+    // // Set default projection
+    // projection = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
 
     // Set default camera
-    cameraPos = glm::vec3(0.0, 0.0, 0.6);
+    cameraPos = glm::vec3(0.0, 0.0, 2.0f);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -625,11 +614,9 @@ int main(void)
 
         view = glm::lookAt(cameraPos, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
 
-        if(perspective) {
-            projection = glm::perspective(glm::radians(45.0f), 1/aspect_ratio, 0.5f, 150.f);
-        } else {
-            projection = glm::ortho(-1.0f, 1.0f, -1.0f * aspect_ratio, 1.0f * aspect_ratio, -10.0f, 10.0f);
-        }
+        projection = glm::perspective(glm::radians(45.0f), 1/aspect_ratio, 0.5f, 150.f);
+        // projection = glm::ortho(-1.0f, 1.0f, -1.0f * aspect_ratio, 1.0f * aspect_ratio, -10.0f, 10.0f);
+       
 
         // Enable stencil operations
         glEnable(GL_STENCIL_TEST);
@@ -657,7 +644,7 @@ int main(void)
                 glUniform3f(program.uniform("objectColor"), 0.0f, 1.0f, 0.0f);
             }
             glUniform3f(program.uniform("lightPos"), lightPos[0], lightPos[1], lightPos[2]);
-            glUniform3f(program.uniform("viewPos"), 0.0f, 0.0f, 1.0f);
+            glUniform3f(program.uniform("viewPos"), cameraPos[0], cameraPos[1], cameraPos[2]);
             program.bindVertexAttribArray("position", VBOs[i]);
             program.bindVertexAttribArray("normal", NBOs[i]);
 
