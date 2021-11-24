@@ -38,8 +38,8 @@ glm::vec3 cameraPos;
 glm::mat4 view;
 glm::mat4 projection;
 
-// Render mode
-vector<char> renderMode;
+// // Render mode
+// vector<char> renderMode;
 
 // For stencil buffer picking
 GLbyte color[4];
@@ -50,7 +50,7 @@ GLuint index;
 bool perspective = false;
 
 // Light position
-glm::vec3 lightPosition = glm::vec3(-0.6f, 0.5f, 0.4f);
+float light_r = 1.0f;
 
 // Contains the vertex for a unit cube
 static const GLfloat vertex_list[][3] = {
@@ -131,8 +131,6 @@ void importCube() {
 
     glm::mat4 trans = glm::mat4(1.f);
     model.push_back(trans);
-
-    renderMode.push_back('w');
 }
 
 void importOff(const char* filename) {
@@ -295,8 +293,6 @@ void importOff(const char* filename) {
         glm::mat4 trans = glm::mat4(1.f);
         model.push_back(trans);
 
-        renderMode.push_back('w');
-
         offFile.close();
     } else {
         cout << "Can not open!";
@@ -347,19 +343,19 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 importOff("../data/bunny.off"); // import a new copy of 'bunny.off'
             break;
 
-        // Render mode
-        case GLFW_KEY_I:
-            if (index > 0)
-                renderMode[index-1] = 'w'; // wireframe mode
-            break;
-        case GLFW_KEY_O:
-            if (index > 0)
-                renderMode[index-1] = 'f'; // flat shading mode
-            break;
-        case GLFW_KEY_P:
-            if (index > 0)
-                renderMode[index-1] = 'p'; // phong shading mode
-            break;
+        // // Render mode
+        // case GLFW_KEY_I:
+        //     if (index > 0)
+        //         renderMode[index-1] = 'w'; // wireframe mode
+        //     break;
+        // case GLFW_KEY_O:
+        //     if (index > 0)
+        //         renderMode[index-1] = 'f'; // flat shading mode
+        //     break;
+        // case GLFW_KEY_P:
+        //     if (index > 0)
+        //         renderMode[index-1] = 'p'; // phong shading mode
+        //     break;
         
         // Translation: w-a-s-d
         case GLFW_KEY_W:
@@ -509,8 +505,6 @@ int main(void)
     std::vector<glm::vec3> V(1);
 
     lightVBO.init();
-    V[0] = lightPosition;
-    lightVBO.update(V);
 
     VertexBufferObject lightNBO;
     std::vector<glm::vec3> N(1);
@@ -525,7 +519,6 @@ int main(void)
 
     model.push_back(glm::mat4(1.f));
     model.push_back(glm::mat4(1.f));
-    renderMode.push_back('w');
 
     // Initialize the OpenGL Program
     Program program;
@@ -542,7 +535,7 @@ int main(void)
                     "{"
                     "    FragPos = vec3(model * vec4(position, 1.0));"
                     "    Normal = mat3(transpose(inverse(model))) * normal;"
-                    "    gl_Position = projection * view * model * vec4(position, 1.0);"
+                    "    gl_Position = projection * view * vec4(FragPos, 1.0);"
                     "}";
     const GLchar* fragment_shader =
             "#version 150 core\n"
@@ -555,7 +548,7 @@ int main(void)
                     "uniform vec3 objectColor;"
                     "void main()"
                     "{"
-                    "    float ambientStrength = 0.4;"
+                    "    float ambientStrength = 0.1;"
                     "    vec3 ambient = ambientStrength * lightColor;"
                     "    vec3 norm = normalize(Normal);"
                     "    vec3 lightDir = normalize(lightPos - FragPos);"
@@ -564,7 +557,7 @@ int main(void)
                     "    float specularStrength = 0.5;"
                     "    vec3 viewDir = normalize(viewPos - FragPos);"
                     "    vec3 reflectDir = reflect(-lightDir, norm);"
-                    "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 16);"
+                    "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);"
                     "    vec3 specular = specularStrength * spec * lightColor;"
                     "    vec3 result = (ambient + diffuse + specular) * objectColor;"
                     "    outColor = vec4(result, 1.0);"
@@ -625,14 +618,6 @@ int main(void)
         auto t_now = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration_cast<std::chrono::duration<float>>(t_now - t_start).count();
 
-        glStencilFunc(GL_ALWAYS, 1, -1);
-        // Bind light VAO
-        lightVAO.bind();
-
-        // Bind program for light
-        program.init(light_vertex_shader,light_fragment_shader,"lightColor");
-        program.bind();
-
         // Get size of the window
         int width, height;
         glfwGetWindowSize(window, &width, &height);
@@ -646,20 +631,12 @@ int main(void)
             projection = glm::ortho(-1.0f, 1.0f, -1.0f * aspect_ratio, 1.0f * aspect_ratio, -10.0f, 10.0f);
         }
 
-        glUniformMatrix4fv(program.uniform("model"), 1, GL_FALSE, glm::value_ptr(model[1]));
-        glUniformMatrix4fv(program.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(program.uniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
-
-        program.bindVertexAttribArray("position",lightVBO);
-
-        glPointSize(3.f);
-        glDrawArrays(GL_POINTS, 0, 1);
-
         // Enable stencil operations
         glEnable(GL_STENCIL_TEST);
         glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
         // Bind other VAO
+        glm::vec3 lightPos = glm::vec3(light_r * cos(glm::radians(time * 10)), 1.0f, light_r * sin(glm::radians(time * 10)));
         for (int i = 1; i < VAOs.size(); i ++) {
             glStencilFunc(GL_ALWAYS, i + 1, -1);
 
@@ -679,29 +656,16 @@ int main(void)
             } else {
                 glUniform3f(program.uniform("objectColor"), 0.0f, 1.0f, 0.0f);
             }
-            glUniform3f(program.uniform("lightPos"), lightPosition[0], lightPosition[1], lightPosition[2]);
+            glUniform3f(program.uniform("lightPos"), lightPos[0], lightPos[1], lightPos[2]);
             glUniform3f(program.uniform("viewPos"), 0.0f, 0.0f, 1.0f);
             program.bindVertexAttribArray("position", VBOs[i]);
             program.bindVertexAttribArray("normal", NBOs[i]);
 
             // Render
             int cols = VBOs[i].cols;
-            if (renderMode[i] == 'w') {
-                for (int i = 0; i < cols; i += 3) {
-                    glDrawArrays(GL_LINE_STRIP, i, 3);
-                }
-            } else if (renderMode[i] == 'f') {
-                for (int i = 0; i < cols; i += 3) {
-                    glUniform3f(program.uniform("objectColor"), 1.0f, 0.5f, 0.31f);
-                    glDrawArrays(GL_TRIANGLES, i, 3);
-                    glUniform3f(program.uniform("objectColor"), 0.0f, 0.0f, 0.0f);
-                    glDrawArrays(GL_LINE_STRIP, i, 3);
-                }
-            } else if (renderMode[i] == 'p') {
-                program.bindVertexAttribArray("normal", vNBOs[i]);
-                for (int i = 0; i < cols; i += 3) {
-                    glDrawArrays(GL_TRIANGLES, i, 3);
-                }
+            program.bindVertexAttribArray("normal", vNBOs[i]);
+            for (int i = 0; i < cols; i += 3) {
+                glDrawArrays(GL_TRIANGLES, i, 3);
             }
         }
 
