@@ -47,7 +47,7 @@ glm::vec3 lightPos;
 // For stencil buffer picking
 GLbyte color[4];
 GLfloat depth;
-GLuint index;
+GLuint index = -1;
 
 // Circular light radius
 float light_r = 1.0f;
@@ -136,7 +136,7 @@ float skyboxVertices[] = {
 };
 
 unsigned int loadCubemap(vector<std::string> faces);
-void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, const string &fs_m, unsigned int &depthMap)
+void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, const string &fs_m, unsigned int &depthMap);
 void renderSkyBox(Program &program, GLFWwindow* window, const string &vs, const string &fs);
 
 void importCube() {
@@ -478,6 +478,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                     NBOs.erase(NBOs.begin() + index);
                     vNBOs.erase(vNBOs.begin() + index);
                     model.erase(model.begin() + index);
+                    renderMode.erase(renderMode.begin() + index);
                     index = -1;
                 }
             }
@@ -1012,6 +1013,8 @@ void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatr
 
 void renderSkyBox(Program &program, GLFWwindow* window, const string &vs, const string &fs) {
 
+    glStencilFunc(GL_ALWAYS, 0, -1);
+    
     // Get size of the window
     int width, height;
     glfwGetWindowSize(window, &width, &height);
