@@ -60,6 +60,9 @@ VertexArrayObject skyboxVAO;
 VertexBufferObject skyboxVBO;
 unsigned int cubemapTexture;
 
+// Render mode
+vector<char> renderMode;
+
 // Contains the vertex for a unit cube
 static const GLfloat vertex_list[][3] = {
     -0.5f, -0.5f, -0.5f,
@@ -133,8 +136,8 @@ float skyboxVertices[] = {
 };
 
 unsigned int loadCubemap(vector<std::string> faces);
-void renderSkyBox(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, unsigned int &depthMap);
-void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, unsigned int &depthMap);
+void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, const string &fs_m, unsigned int &depthMap)
+void renderSkyBox(Program &program, GLFWwindow* window, const string &vs, const string &fs);
 
 void importCube() {
     VertexArrayObject VAO;
@@ -188,6 +191,7 @@ void importCube() {
 
     glm::mat4 trans = glm::mat4(1.f);
     model.push_back(trans);
+    renderMode.push_back('p');
 }
 
 void importOff(const char* filename) {
@@ -349,6 +353,7 @@ void importOff(const char* filename) {
 
         glm::mat4 trans = glm::mat4(1.f);
         model.push_back(trans);
+        renderMode.push_back('p');
 
         offFile.close();
     } else {
@@ -502,6 +507,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 shadowColorBlack = 1 - shadowColorBlack;
             break;
 
+        // Phong Shading: p
+        case GLFW_KEY_P:
+            if (action == GLFW_PRESS)
+                renderMode[index] = 'p';
+            break;
+
+        // Mirror Appearance: o
+        case GLFW_KEY_O:
+            if (action == GLFW_PRESS)
+                renderMode[index] = 'm';
+            break;
 
         default:
             break;
@@ -607,6 +623,7 @@ int main(void)
     vNBOs.push_back(planeNBO);
 
     model.push_back(glm::mat4(1.f));
+    renderMode.push_back('p');
 
     // Depth map
     unsigned int depthMapFBO;
@@ -667,6 +684,7 @@ int main(void)
                     "uniform vec3 lightColor;"
                     "uniform vec3 objectColor;"
                     "uniform vec3 shadowColor;"
+                    "uniform samplerCube skybox;"
                     "float ShadowCalculation(vec4 fragPosLightSpace, float bias)"
                     "{"
                     "    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;"
@@ -702,8 +720,61 @@ int main(void)
                     "    float bias = max(0.05 * (1.0 - dot(norm, lightDir)), 0.005); "
                     "    float shadow = ShadowCalculation(FragPosLightSpace, bias);"
                     "    vec3 result = ambient * objectColor + (1.0 - shadow) * (diffuse + specular) * objectColor + shadow * (diffuse + specular) * shadowColor;"
-                    //"    vec3 result = (ambient + (1.0 - shadow) * (diffuse + specular)) * objectColor;"
-                    //"    vec3 result = (ambient + diffuse + specular) * objectColor;"
+                    "    outColor = vec4(result, 1.0);"
+                    "}";
+
+    const GLchar* fragment_shader_mirror = 
+            "#version 150 core\n"
+                    "out vec4 outColor;"
+                    "in vec3 Normal;"
+                    "in vec3 FragPos;"
+                    "in vec2 TexCoords;"
+                    "in vec4 FragPosLightSpace;"
+                    "uniform sampler2D shadowMap;"
+                    "uniform vec3 lightPos;"
+                    "uniform vec3 viewPos;"
+                    "uniform vec3 lightColor;"
+                    "uniform vec3 objectColor;"
+                    "uniform vec3 shadowColor;"
+                    "uniform samplerCube skybox;"
+                    "float ShadowCalculation(vec4 fragPosLightSpace, float bias)"
+                    "{"
+                    "    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;"
+                    "    projCoords = projCoords * 0.5 + 0.5;"
+                    "    float closestDepth = texture(shadowMap, projCoords.xy).r;"
+                    "    float currentDepth = projCoords.z;"
+                    "    float shadow = 0.0;"
+                    "    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);"
+                    "    for(int x = -1; x <= 1; ++x) {"
+                    "        for(int y = -1; y <= 1; ++y) {"
+                    "            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; "
+                    "            shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;"
+                    "        }"
+                    "    }"
+                    "    shadow /= 9.0;"
+                    "    if(projCoords.z > 1.0)"
+                    "        shadow = 0.0;"
+                    "    return shadow;"
+                    "}"
+                    "void main()"
+                    "{"
+                    "    float ambientStrength = 0.4;"
+                    "    vec3 ambient = ambientStrength * lightColor;"
+                    "    vec3 norm = normalize(Normal);"
+                    "    vec3 lightDir = normalize(lightPos - FragPos);"
+                    "    float diff = max(dot(norm, lightDir), 0.0);"
+                    "    vec3 diffuse = diff * lightColor;"
+                    "    float specularStrength = 0.5;"
+                    "    vec3 viewDir = normalize(viewPos - FragPos);"
+                    "    vec3 reflectDir = reflect(-lightDir, norm);"
+                    "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 128);"
+                    "    vec3 specular = specularStrength * spec * lightColor;"
+                    "    float bias = max(0.05 * (1.0 - dot(norm, lightDir)), 0.005); "
+                    "    float shadow = ShadowCalculation(FragPosLightSpace, bias);"
+                    "    vec3 I = normalize(FragPos - viewPos);"
+                    "    vec3 R = reflect(I, normalize(Normal));"
+                    "    vec3 color = texture(skybox, R).rgb;"
+                    "    vec3 result = ambient * color + (1.0 - shadow) * (diffuse + specular) * color + shadow * (diffuse + specular) * shadowColor;"
                     "    outColor = vec4(result, 1.0);"
                     "}";
 
@@ -827,8 +898,8 @@ int main(void)
         glViewport(0, 0, original_width, original_height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        renderScene(program, window, lightSpaceMatrix, vertex_shader, fragment_shader, depthMap);
-        renderSkyBox(program, window, lightSpaceMatrix, skybox_vs, skybox_fs, depthMap);
+        renderScene(program, window, lightSpaceMatrix, vertex_shader, fragment_shader, fragment_shader_mirror, depthMap);
+        renderSkyBox(program, window, skybox_vs, skybox_fs);
 
         // Swap front and back buffers
         glfwSwapBuffers(window);
@@ -851,7 +922,7 @@ int main(void)
     return 0;
 }
 
-void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, unsigned int &depthMap) {
+void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, const string &fs_m, unsigned int &depthMap) {
     // Get size of the window
     int width, height;
     glfwGetWindowSize(window, &width, &height);
@@ -898,6 +969,13 @@ void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatr
         glStencilFunc(GL_ALWAYS, i, -1);
 
         VAOs[i].bind();
+
+        if (renderMode[i] == 'm') {
+            program.init(vs,fs_m,"outColor");
+        } else {
+            program.init(vs,fs,"outColor");
+        }
+
         program.bind();
 
         glUniformMatrix4fv(program.uniform("model"), 1, GL_FALSE, glm::value_ptr(model[i]));
@@ -921,6 +999,7 @@ void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatr
         glUniform3f(program.uniform("viewPos"), cameraPos[0], cameraPos[1], cameraPos[2]);
         program.bindVertexAttribArray("position", VBOs[i]);
         program.bindVertexAttribArray("normal", NBOs[i]);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 
         // Render
         int cols = VBOs[i].cols;
@@ -931,7 +1010,7 @@ void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatr
     }
 }
 
-void renderSkyBox(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, unsigned int &depthMap) {
+void renderSkyBox(Program &program, GLFWwindow* window, const string &vs, const string &fs) {
 
     // Get size of the window
     int width, height;
