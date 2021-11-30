@@ -58,16 +58,12 @@ endif()
 file(GLOB SOURCES2
 "${CMAKE_CURRENT_SOURCE_DIR}/src/Helpers.cpp"
 "${CMAKE_CURRENT_SOURCE_DIR}/src/Helpers.h"
+"${CMAKE_CURRENT_SOURCE_DIR}/src/stb_image.h"
 )
 
 ### Compile all the cpp files in src
 file(GLOB SOURCES
 "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-)
-
-### Compile all the cpp files in src
-file(GLOB SOURCES
-"${CMAKE_CURRENT_SOURCE_DIR}/src/stb_image.h"
 )
 
 add_executable(${PROJECT_NAME}_bin ${SOURCES})
