@@ -116,6 +116,71 @@ void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatr
 
 * Shadow Mapping
 
+The shadow mapping is divided into two parts: firstly, render the depth of scene to texture depthMap; then using depthMap to render the normal scene. 
+
+For the first part, I specified two new shaders shadow_vs and shadow_fs. Then combined the lightSpaceMatrix to convert the positions with respect to the light. Finally, draw every object in the scene everytime in the render loop in order to get the updated depthMap.
+```bash
+// Render depth of scene to texture
+glm::mat4 lightProjection, lightView;
+glm::mat4 lightSpaceMatrix;
+float near_plane = 1.0f, far_plane = 7.5f;
+lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0, 1.0, 0.0));
+lightSpaceMatrix = lightProjection * lightView;
+// render scene from light's point of view
+program.init(shadow_vs,shadow_fs,"outColor");
+program.bind();
+glUniformMatrix4fv(program.uniform("lightSpaceMatrix"), 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+
+glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+glClear(GL_DEPTH_BUFFER_BIT);
+
+for (int i = 0; i < VAOs.size(); i ++) {
+    glUniformMatrix4fv(program.uniform("model"), 1, GL_FALSE, glm::value_ptr(model[i]));
+    VAOs[i].bind();
+    program.bind();
+    int cols = VBOs[i].cols;
+    program.bindVertexAttribArray("normal", vNBOs[i]);
+    for (int i = 0; i < cols; i += 3) {
+        glDrawArrays(GL_TRIANGLES, i, 3);
+    }
+}
+
+glBindFramebuffer(GL_FRAMEBUFFER, 0);
+```
+
+For the second part, the depthMap is passed into the renderScene function. We bind it as texture for render the objects. In the objects' vertex shader and fragment shader, we add new variable FragPosLightSpace and lightSpaceMatrix to convert the position from the view of the light, and then use a new function "ShadowCalculation" to calculate if the position is in shadow. I also use PCF algorithm to improve the quality of shadow in this function. 
+```bash
+float ShadowCalculation(vec4 fragPosLightSpace, float bias)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float closestDepth = texture(shadowMap, projCoords.xy).r;
+    float currentDepth = projCoords.z;
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+            shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;
+        }
+    }
+    shadow /= 9.0;
+    if(projCoords.z > 1.0)
+        shadow = 0.0;
+    return shadow;
+}
+```
+
+Finally, we change the fragment shader by adding the affect of shadow like the following lines.
+```bash
+float bias = max(0.05 * (1.0 - dot(norm, lightDir)), 0.005); 
+float shadow = ShadowCalculation(FragPosLightSpace, bias);
+vec3 result = ambient * objectColor + (1.0 - shadow) * (diffuse + specular) * objectColor + shadow * (diffuse + specular) * shadowColor;
+```
+
+
 * Change Shadow Color (key '0')
 
 ## Environment Mapping
