@@ -47,7 +47,7 @@ glm::vec3 lightPos;
 // For stencil buffer picking
 GLbyte color[4];
 GLfloat depth;
-GLuint index = -1;
+GLuint index = 0;
 
 // Circular light radius
 float light_r = 1.0f;
@@ -76,18 +76,33 @@ static const GLfloat vertex_list[][3] = {
 };
 
 static const GLint index_list[][3] = {
-    0, 1, 2,
-    2, 1, 3,
-    3, 7, 1,
-    1, 7, 5,
-    5, 6, 7,
-    6, 4, 5,
+    0, 1, 3,
+    3, 2, 0,
+    4, 5, 7,
+    7, 6, 4,
+    6, 2, 0,
+    0, 4, 6,
+    7, 3, 1,
+    1, 5, 7,
+    0, 1, 5,
     5, 4, 0,
-    0, 5, 1,
-    0, 6, 4,
-    0, 2, 6,
-    6, 7, 2,
-    2, 3, 7
+    2, 3, 7,
+    7, 6, 2
+};
+
+static const GLfloat cube_normal[][3] = {
+    0.0f,  0.0f, -1.0f,
+    0.0f,  0.0f, -1.0f,
+    0.0f,  0.0f, 1.0f,
+    0.0f,  0.0f, 1.0f,
+    -1.0f,  0.0f,  0.0f,
+    -1.0f,  0.0f,  0.0f,
+    1.0f,  0.0f,  0.0f,
+    1.0f,  0.0f,  0.0f,
+    0.0f, -1.0f,  0.0f,
+    0.0f, -1.0f,  0.0f,
+    0.0f,  1.0f,  0.0f,
+    0.0f,  1.0f,  0.0f,
 };
 
 float skyboxVertices[] = {
@@ -136,7 +151,7 @@ float skyboxVertices[] = {
 };
 
 unsigned int loadCubemap(vector<std::string> faces);
-void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, const string &fs_m, unsigned int &depthMap);
+void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, const string &fs_m, const string &fs_r, unsigned int &depthMap);
 void renderSkyBox(Program &program, GLFWwindow* window, const string &vs, const string &fs);
 
 void importCube() {
@@ -157,8 +172,8 @@ void importCube() {
             triangle[j] = glm::vec3(vertex_list[index_list[i][j]][0], vertex_list[index_list[i][j]][1], vertex_list[index_list[i][j]][2]);
             V.push_back(triangle[j]);
         }  
-        glm::vec3 normal = cross(triangle[1] - triangle[0], triangle[2] - triangle[0]);
-        normal = normalize(normal);
+        glm::vec3 normal = glm::vec3(cube_normal[i][0], cube_normal[i][1], cube_normal[i][2]);
+        cout << normal[0] << normal[1] << normal[2] << "\n";
         for(int temp = 0; temp < 3; temp ++) {
             N.push_back(normal);
         }
@@ -508,16 +523,29 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
                 shadowColorBlack = 1 - shadowColorBlack;
             break;
 
+        // Render Mode
         // Phong Shading: p
         case GLFW_KEY_P:
-            if (action == GLFW_PRESS)
-                renderMode[index] = 'p';
+            if (action == GLFW_PRESS) {
+                if (index > 0)
+                    renderMode[index] = 'p';
+            }
             break;
 
         // Mirror Appearance: o
         case GLFW_KEY_O:
-            if (action == GLFW_PRESS)
-                renderMode[index] = 'm';
+            if (action == GLFW_PRESS) {
+                if (index > 0)
+                    renderMode[index] = 'm';
+            }
+            break;
+
+        // Refraction: i
+        case GLFW_KEY_I:
+            if (action == GLFW_PRESS) {
+                if (index > 0)
+                    renderMode[index] = 'r';
+            }
             break;
 
         default:
@@ -818,6 +846,28 @@ int main(void)
                     "    FragColor = texture(skybox, TexCoords);"
                     "}"; 
 
+    const GLchar* fragment_shader_r =
+            "#version 150 core\n"
+                    "out vec4 outColor;"
+                    "in vec3 Normal;"
+                    "in vec3 FragPos;"
+                    "in vec2 TexCoords;"
+                    "in vec4 FragPosLightSpace;"
+                    "uniform sampler2D shadowMap;"
+                    "uniform vec3 lightPos;"
+                    "uniform vec3 viewPos;"
+                    "uniform vec3 lightColor;"
+                    "uniform vec3 objectColor;"
+                    "uniform vec3 shadowColor;"
+                    "uniform samplerCube skybox;"
+                    "void main()"
+                    "{"
+                    "    float ratio = 1.00 / 1.52;"
+                    "    vec3 I = normalize(FragPos - viewPos);"
+                    "    vec3 R = refract(I, normalize(Normal), ratio);"
+                    "    outColor = vec4(texture(skybox, R).rgb, 1.0);"
+                    "}";
+
     program.init(vertex_shader,fragment_shader,"outColor");
     program.bind();
     program.bindVertexAttribArray("position", planeVBO);
@@ -899,7 +949,7 @@ int main(void)
         glViewport(0, 0, original_width, original_height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        renderScene(program, window, lightSpaceMatrix, vertex_shader, fragment_shader, fragment_shader_mirror, depthMap);
+        renderScene(program, window, lightSpaceMatrix, vertex_shader, fragment_shader, fragment_shader_mirror, fragment_shader_r, depthMap);
         renderSkyBox(program, window, skybox_vs, skybox_fs);
 
         // Swap front and back buffers
@@ -923,7 +973,7 @@ int main(void)
     return 0;
 }
 
-void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, const string &fs_m, unsigned int &depthMap) {
+void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatrix, const string &vs, const string &fs, const string &fs_m, const string &fs_r, unsigned int &depthMap) {
     // Get size of the window
     int width, height;
     glfwGetWindowSize(window, &width, &height);
@@ -973,8 +1023,10 @@ void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatr
 
         if (renderMode[i] == 'm') {
             program.init(vs,fs_m,"outColor");
-        } else {
+        } else if (renderMode[i] == 'p') {
             program.init(vs,fs,"outColor");
+        } else if (renderMode[i] == 'r') {
+            program.init(vs,fs_r,"outColor");
         }
 
         program.bind();
@@ -1014,7 +1066,7 @@ void renderScene(Program &program, GLFWwindow* window, glm::mat4 &lightSpaceMatr
 void renderSkyBox(Program &program, GLFWwindow* window, const string &vs, const string &fs) {
 
     glStencilFunc(GL_ALWAYS, 0, -1);
-    
+
     // Get size of the window
     int width, height;
     glfwGetWindowSize(window, &width, &height);
