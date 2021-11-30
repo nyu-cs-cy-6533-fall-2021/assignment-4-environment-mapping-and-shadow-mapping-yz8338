@@ -192,7 +192,13 @@ if (shadowColorBlack == 1) {
 }
 ```
 
+Black Shadow:
+
 ![1](OneDrive/桌面/Assignment4/Assignment_4/gif/1.png)
+
+Red Shadow:
+
+![2](OneDrive/桌面/Assignment4/Assignment_4/gif/2.png)
 
 ## Environment Mapping
 
@@ -282,6 +288,10 @@ vec3 result = ambient * color + (1.0 - shadow) * (diffuse + specular) * color + 
 ```
 
 For changing render mode back to phong shading, the user can press key 'p'.
+
+The following figure shows the objects in phong shading, reflection and refraction from left to right:
+
+![3](OneDrive/桌面/Assignment4/Assignment_4/gif/3.png)
 
 * Object Control
 
