@@ -198,21 +198,133 @@ if (shadowColorBlack == 1) {
 
 * Skybox Loading
 
+The skybox is loaded by loadCubemap() function, within this function, we use a vector of the faces' png files with stb_image.h library to load and bind the image into texture_cube_map. This function is called once before the render loop.
+```bash
+unsigned int loadCubemap(vector<std::string> faces) {
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    stbi_set_flip_vertically_on_load(true);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
+                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+            );
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cout << "Cubemap tex failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+```
+
 * Skybox Rendering
+
+The skybox is rendered in renderSkyBox() function and it is called everytime in render loop after renderScene. In this function, it is basically similar as renderScene function, except for the vertex shader and fragment shader is different. We also need to bind the cubemapTexture as its texture. In order to draw the cube as background, we call glDepthFunc(GL_LEQUAL) before drawing the triangles.
+```bash
+void renderSkyBox(Program &program, GLFWwindow* window, const string &vs, const string &fs) {
+
+    glStencilFunc(GL_ALWAYS, 0, -1);
+
+    // Get size of the window
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
+    float aspect_ratio = float(height)/float(width);
+    view = glm::lookAt(cameraPos, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
+    view = glm::mat4(glm::mat3(view));
+    projection = glm::perspective(glm::radians(45.0f), 1/aspect_ratio, 0.5f, 150.f);
+
+    // Draw skybox
+    skyboxVAO.bind();
+
+    glDepthMask(GL_FALSE);
+    program.init(vs,fs,"FragColor");
+    program.bind();
+
+    glDepthFunc(GL_LEQUAL);  
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+
+    glUniformMatrix4fv(program.uniform("view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(program.uniform("projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    program.bindVertexAttribArray("position", skyboxVBO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glDepthFunc(GL_LESS); 
+    glDepthMask(GL_TRUE);
+}
+```
 
 * Reflection (key 'o')
 
+By setting the character in vector renderMode, we store the render mode of each object. If the user select an object and press key 'o', reflection mode is set for that object. Then we use "fragment_shader_mirror" shader for that specific object. In this shader, I combine the shadow with reflection as the following lines show:
+```bash
+float shadow = ShadowCalculation(FragPosLightSpace, bias);
+vec3 I = normalize(FragPos - viewPos);
+vec3 R = reflect(I, normalize(Normal));
+vec3 color = texture(skybox, R).rgb;
+vec3 result = ambient * color + (1.0 - shadow) * (diffuse + specular) * color + shadow * (diffuse + specular) * shadowColor;
+```
+
+For changing render mode back to phong shading, the user can press key 'p'.
+
 * Object Control
+
+(1) w-a-s-d-q-e: translate in each axis
+
+(2) h-j-y-u-n-m: rotate around each axis
+
+(3) k-l: scale down and scale up
 
 ## Camera Control
 
 * Key (Up & Down & Left & Right)
 
+The camera control is the same as Assignment3.
 
 ## Optional Tasks
 
 * Refraction (key 'i')
 
+Similar to reflection, when user press key 'i', the render mode of selected object will changed to refraction. Thus, the fragment shader will change to "fragment_shader_r":
+```bash
+const GLchar* fragment_shader_r =
+    "#version 150 core\n"
+            "out vec4 outColor;"
+            "in vec3 Normal;"
+            "in vec3 FragPos;"
+            "in vec2 TexCoords;"
+            "in vec4 FragPosLightSpace;"
+            "uniform sampler2D shadowMap;"
+            "uniform vec3 lightPos;"
+            "uniform vec3 viewPos;"
+            "uniform vec3 lightColor;"
+            "uniform vec3 objectColor;"
+            "uniform vec3 shadowColor;"
+            "uniform samplerCube skybox;"
+            "void main()"
+            "{"
+            "    float ratio = 1.00 / 1.52;"
+            "    vec3 I = normalize(FragPos - viewPos);"
+            "    vec3 R = refract(I, normalize(Normal), ratio);"
+            "    outColor = vec4(texture(skybox, R).rgb, 1.0);"
+            "}";
+```
 
 # Compilation Instructions
 
