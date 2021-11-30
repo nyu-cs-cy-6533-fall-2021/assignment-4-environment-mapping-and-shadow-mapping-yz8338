@@ -297,9 +297,19 @@ The following figure shows the objects in phong shading, reflection and refracti
 
 (1) w-a-s-d-q-e: translate in each axis
 
+![wasdqe](OneDrive/桌面/Assignment4/Assignment_4/gif/wasdqe.gif)
+
 (2) h-j-y-u-n-m: rotate around each axis
 
+![hjyunm](OneDrive/桌面/Assignment4/Assignment_4/gif/hjyunm.gif)
+
 (3) k-l: scale down and scale up
+
+![kl](OneDrive/桌面/Assignment4/Assignment_4/gif/kl.gif)
+
+(4) backspace: delete
+
+![delete](OneDrive/桌面/Assignment4/Assignment_4/gif/delete.gif)
 
 ## Camera Control
 
