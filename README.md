@@ -192,7 +192,7 @@ if (shadowColorBlack == 1) {
 }
 ```
 
-
+![1](OneDrive/桌面/Assignment4/Assignment_4/gif/1.png)
 
 ## Environment Mapping
 
