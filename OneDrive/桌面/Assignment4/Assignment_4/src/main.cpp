@@ -173,7 +173,6 @@ void importCube() {
             V.push_back(triangle[j]);
         }  
         glm::vec3 normal = glm::vec3(cube_normal[i][0], cube_normal[i][1], cube_normal[i][2]);
-        cout << normal[0] << normal[1] << normal[2] << "\n";
         for(int temp = 0; temp < 3; temp ++) {
             N.push_back(normal);
         }
