@@ -1,2 +1,0 @@
-C:\Users\hz36a\OneDrive\桌面\Assignment3\Assignment_3\build\Debug\glew.pdb
-C:\Users\hz36a\OneDrive\桌面\Assignment3\Assignment_3\build\glew\glew.dir\Debug\glew.pdb
