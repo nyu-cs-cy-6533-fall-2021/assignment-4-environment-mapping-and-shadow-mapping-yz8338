@@ -183,6 +183,17 @@ vec3 result = ambient * objectColor + (1.0 - shadow) * (diffuse + specular) * ob
 
 * Change Shadow Color (key '0')
 
+Specified in global variable 'shadowColorBlack' and flipped everytime when pressing key '0', we detect its value each time in renderScene function and passed black or red into the shader.
+```bash
+if (shadowColorBlack == 1) {
+    glUniform3f(program.uniform("shadowColor"), 0.0f, 0.0f, 0.0f);
+} else {
+    glUniform3f(program.uniform("shadowColor"), 1.0f, 0.0f, 0.0f);
+}
+```
+
+
+
 ## Environment Mapping
 
 * Skybox Loading
